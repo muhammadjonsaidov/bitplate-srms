@@ -11,7 +11,6 @@ import java.util.UUID;
 /**
  * Stores refresh tokens in Redis with TTL.
  * Key: "refresh:{username}" → refresh token value.
- * ENCAPSULATION — token storage detail hidden from callers.
  */
 @Service
 @RequiredArgsConstructor

@@ -1,6 +1,7 @@
 package com.biteplate.api;
 
 import com.biteplate.application.StaffService;
+import com.biteplate.security.JwtTokenProvider;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
@@ -24,6 +25,7 @@ import java.util.Map;
 public class AuthController {
 
     private final StaffService staffService;
+    private final JwtTokenProvider jwtTokenProvider;
 
     public record LoginRequest(@NotBlank String username, @NotBlank String password) {}
 
@@ -81,7 +83,6 @@ public class AuthController {
     }
 
     private String extractUsernameFromCookie(String token) {
-        // Minimal fallback — JwtAuthFilter handles this properly in production
-        throw new IllegalStateException("Authentication required");
+        return jwtTokenProvider.extractUsername(token);
     }
 }
