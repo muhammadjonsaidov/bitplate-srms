@@ -1,49 +1,96 @@
 import { useQuery } from '@tanstack/react-query'
 import { fetchTables } from '../api/tables'
-import { Table } from '../types'
+import { fetchKitchenQueue } from '../api/kitchen'
+import { Table, Order } from '../types'
 
 export default function DashboardPage() {
   const { data: tables = [] } = useQuery({
     queryKey: ['tables'], queryFn: fetchTables, refetchInterval: 30_000,
   })
+  const { data: activeOrders = [] } = useQuery({
+    queryKey: ['kitchen-queue'], queryFn: fetchKitchenQueue, refetchInterval: 15_000,
+  })
 
-  const counts = {
-    free:     (tables as Table[]).filter(t => t.status === 'FREE').length,
-    occupied: (tables as Table[]).filter(t => t.status === 'OCCUPIED').length,
-    awaiting: (tables as Table[]).filter(t => t.status === 'AWAITING_BILL').length,
-    reserved: (tables as Table[]).filter(t => t.status === 'RESERVED').length,
+  const t = tables as Table[]
+  const o = activeOrders as Order[]
+
+  const tableCounts = {
+    free:     t.filter(x => x.status === 'FREE').length,
+    occupied: t.filter(x => x.status === 'OCCUPIED').length,
+    awaiting: t.filter(x => x.status === 'AWAITING_BILL').length,
+    reserved: t.filter(x => x.status === 'RESERVED').length,
   }
 
+  const orderCounts = {
+    pending:   o.filter(x => x.status === 'PENDING').length,
+    preparing: o.filter(x => x.status === 'PREPARING').length,
+    ready:     o.filter(x => x.status === 'READY').length,
+  }
+
+  const occupancyPct = t.length
+    ? Math.round(((tableCounts.occupied + tableCounts.awaiting) / t.length) * 100)
+    : 0
+
   return (
-    <div>
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Manager Dashboard</h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {[
-          { label: 'Free', count: counts.free, color: 'green' },
-          { label: 'Occupied', count: counts.occupied, color: 'orange' },
-          { label: 'Awaiting Bill', count: counts.awaiting, color: 'yellow' },
-          { label: 'Reserved', count: counts.reserved, color: 'blue' },
-        ].map(({ label, count, color }) => (
-          <div key={label} className={`bg-${color}-50 border border-${color}-200 rounded-xl p-5`}>
-            <div className={`text-3xl font-bold text-${color}-700`}>{count}</div>
-            <div className={`text-sm text-${color}-600 mt-1`}>{label} Tables</div>
-          </div>
-        ))}
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-800">Overview</h2>
+        <p className="text-sm text-gray-500 mt-1">Live restaurant status</p>
       </div>
-      <div className="bg-white rounded-xl shadow p-6">
-        <h3 className="font-semibold mb-3">Design Patterns Active</h3>
-        <ul className="text-sm space-y-1 text-gray-600">
-          <li>✅ <strong>Command</strong> — Kitchen Queue with undo</li>
-          <li>✅ <strong>Singleton</strong> — Order History Log (thread-safe)</li>
-          <li>✅ <strong>Strategy</strong> — Pricing Engine (Standard / Happy Hour / Loyalty)</li>
-          <li>✅ <strong>Observer</strong> — Order status → Waiter/Kitchen/Manager notifications</li>
-          <li>✅ <strong>State</strong> — Table lifecycle (Free→Occupied→AwaitingBill→Cleared)</li>
-          <li>✅ <strong>Factory Method</strong> — Menu item creation</li>
-          <li>✅ <strong>Decorator</strong> — Meal customisation (allergen, special prep)</li>
-          <li>✅ <strong>Facade</strong> — Billing & POS subsystem</li>
-          <li>✅ <strong>Composite</strong> — ComboMeal containing MenuItems</li>
-          <li>✅ <strong>Iterator</strong> — Order history traversal</li>
-        </ul>
+
+      {/* Table status */}
+      <div>
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Tables</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            { label: 'Free',          count: tableCounts.free,     bg: 'bg-green-50',  border: 'border-green-200',  text: 'text-green-700' },
+            { label: 'Occupied',      count: tableCounts.occupied, bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700' },
+            { label: 'Awaiting Bill', count: tableCounts.awaiting, bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-700' },
+            { label: 'Reserved',      count: tableCounts.reserved, bg: 'bg-blue-50',   border: 'border-blue-200',   text: 'text-blue-700' },
+          ].map(({ label, count, bg, border, text }) => (
+            <div key={label} className={`${bg} border ${border} rounded-xl p-5`}>
+              <div className={`text-3xl font-bold ${text}`}>{count}</div>
+              <div className={`text-sm ${text} mt-1`}>{label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Kitchen status */}
+      <div>
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Kitchen</h3>
+        <div className="grid grid-cols-3 gap-4">
+          {[
+            { label: 'Pending',   count: orderCounts.pending,   bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-700' },
+            { label: 'Preparing', count: orderCounts.preparing, bg: 'bg-blue-50',   border: 'border-blue-200',   text: 'text-blue-700' },
+            { label: 'Ready',     count: orderCounts.ready,     bg: 'bg-green-50',  border: 'border-green-200',  text: 'text-green-700' },
+          ].map(({ label, count, bg, border, text }) => (
+            <div key={label} className={`${bg} border ${border} rounded-xl p-5`}>
+              <div className={`text-3xl font-bold ${text}`}>{count}</div>
+              <div className={`text-sm ${text} mt-1`}>{label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Summary bar */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5 flex items-center justify-between">
+        <div>
+          <p className="text-sm text-gray-500">Occupancy rate</p>
+          <p className="text-2xl font-bold text-gray-800">{occupancyPct}%</p>
+        </div>
+        <div>
+          <p className="text-sm text-gray-500">Total tables</p>
+          <p className="text-2xl font-bold text-gray-800">{t.length}</p>
+        </div>
+        <div>
+          <p className="text-sm text-gray-500">Active orders</p>
+          <p className="text-2xl font-bold text-gray-800">{o.length}</p>
+        </div>
+        <div>
+          <p className="text-sm text-gray-500">Ready to serve</p>
+          <p className="text-2xl font-bold text-green-600">{orderCounts.ready}</p>
+        </div>
       </div>
     </div>
   )

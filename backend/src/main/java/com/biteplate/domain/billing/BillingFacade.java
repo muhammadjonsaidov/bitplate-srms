@@ -31,7 +31,6 @@ public class BillingFacade {
     private final BillRepository billRepository;
     private final OrderHistoryLogRepository historyRepository;
 
-    /** Current pricing strategy — swapped at runtime (Strategy pattern) */
     private PricingStrategy pricingStrategy;
 
     public void setPricingStrategy(PricingStrategy strategy) {
@@ -65,7 +64,7 @@ public class BillingFacade {
 
         Bill saved = billRepository.save(bill);
 
-        // Record in Singleton audit log
+        // Append to audit log
         appendToHistoryLog(order, total);
 
         return saved;
@@ -110,7 +109,7 @@ public class BillingFacade {
         // Persist to DB
         historyRepository.save(record);
 
-        // Append to in-memory Singleton log
+        // Record in audit log
         OrderHistoryLog.getInstance().append(record);
     }
 }

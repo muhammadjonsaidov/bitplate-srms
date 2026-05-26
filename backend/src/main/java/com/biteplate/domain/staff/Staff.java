@@ -9,11 +9,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * ABSTRACTION + INHERITANCE — abstract Staff class.
+ * Base staff entity. All roles (Manager, Chef, Waiter, Cashier) extend this class
+ * and implement their own permission sets via {@link #getPermissions()}.
  *
- * Defines the contract for all staff types via abstract getPermissions().
- * Manager, Chef, Waiter, Cashier each provide their own permission list.
- * ENCAPSULATION — password protected; never exposed in API responses.
+ * Password is never included in API responses.
  */
 @Entity
 @Table(name = "staff")
@@ -34,7 +33,6 @@ public abstract class Staff {
     @Column(nullable = false, unique = true, length = 50)
     private String username;
 
-    /** ENCAPSULATION — password never returned in API responses */
     @Column(nullable = false)
     private String password;
 
@@ -55,8 +53,8 @@ public abstract class Staff {
     }
 
     /**
-     * ABSTRACTION — each role defines its own allowed operations.
-     * POLYMORPHISM — single method call works for Manager, Chef, Waiter, Cashier.
+     * Returns the list of operations permitted for this staff role.
+     * Each subclass provides its own implementation.
      */
     public abstract List<String> getPermissions();
 

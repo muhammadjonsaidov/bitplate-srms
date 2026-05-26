@@ -5,20 +5,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * BitePlate Smart Restaurant Management System
- * Unit 27: Advanced Programming — BTEC Level 5
+ * BitePlate — Smart Restaurant Management System
  *
- * Design patterns implemented:
- *  - Command    (KitchenQueue / KitchenCommand)
- *  - Singleton  (OrderHistoryLog)
- *  - Strategy   (PricingStrategy)
- *  - Observer   (OrderObserver / Redis Pub/Sub)
- *  - State      (TableState)
- *  - Factory    (MenuItemFactory)
- *  - Decorator  (MenuItemDecorator)
- *  - Facade     (BillingFacade)
- *  - Composite  (ComboMeal / MenuComponent)
- *  - Iterator   (OrderHistoryIterator)
+ * Spring Boot 3.3 application providing table management, order lifecycle,
+ * kitchen queue, billing, and real-time notifications via Redis Pub/Sub.
  */
 @SpringBootApplication
 @EnableScheduling
