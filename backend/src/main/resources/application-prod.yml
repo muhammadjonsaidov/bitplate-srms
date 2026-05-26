@@ -4,6 +4,5 @@ spring:
 
 logging:
   level:
-    com.biteplate: DEBUG
-    org.springframework.security: DEBUG
+    com.biteplate: WARN
     root: WARN
