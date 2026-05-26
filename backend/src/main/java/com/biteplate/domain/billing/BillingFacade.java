@@ -19,6 +19,8 @@ import java.math.BigDecimal;
  * Clients (BillingController, BillingService) call one method.
  * Behind the scenes: TaxCalculator, TipHandler, SplitBillService, OrderHistoryLog all coordinate.
  * No client needs to know about these sub-components.
+ *
+ * Thread-safe: strategy is passed as a method parameter, not stored as mutable state.
  */
 @Slf4j
 @Component
@@ -31,27 +33,23 @@ public class BillingFacade {
     private final BillRepository billRepository;
     private final OrderHistoryLogRepository historyRepository;
 
-    private PricingStrategy pricingStrategy;
-
-    public void setPricingStrategy(PricingStrategy strategy) {
-        this.pricingStrategy = strategy;
-        log.info("Pricing strategy switched to: {}", strategy.getStrategyName());
-    }
-
     /**
      * FACADE — single call to generate a complete, itemised bill.
-     * Internally orchestrates: pricing → tax → line items → history log.
+     * STRATEGY PATTERN — accepts any PricingStrategy implementation.
+     * Thread-safe: strategy is a method parameter, not shared mutable state.
      */
     @Transactional
-    public Bill generateBill(Order order) {
-        BigDecimal subtotal = pricingStrategy.calculateTotal(order);
+    public Bill generateBill(Order order, PricingStrategy strategy) {
+        log.info("Generating bill for order {} with strategy {}", order.getId(), strategy.getStrategyName());
+
+        BigDecimal subtotal = strategy.calculateTotal(order);
         BigDecimal tax = taxCalculator.calculateTax(subtotal);
         BigDecimal total = subtotal.add(tax);
 
         Bill bill = new Bill(order, subtotal);
         bill.setTax(tax);
         bill.setTotal(total);
-        bill.setPricingStrategy(pricingStrategy.getStrategyName());
+        bill.setPricingStrategy(strategy.getStrategyName());
 
         // Build line items
         order.getItems().forEach(item ->
@@ -64,8 +62,7 @@ public class BillingFacade {
 
         Bill saved = billRepository.save(bill);
 
-        // Append to audit log
-        appendToHistoryLog(order, total);
+        appendToHistoryLog(order, total, strategy);
 
         return saved;
     }
@@ -91,7 +88,7 @@ public class BillingFacade {
         return billRepository.save(bill);
     }
 
-    private void appendToHistoryLog(Order order, BigDecimal total) {
+    private void appendToHistoryLog(Order order, BigDecimal total, PricingStrategy strategy) {
         String itemsSummary = order.getItems().stream()
             .map(i -> i.getMenuItem().getName())
             .reduce("", (a, b) -> a.isEmpty() ? b : a + ", " + b);
@@ -103,13 +100,10 @@ public class BillingFacade {
             order.getStaff().getName(),
             itemsSummary,
             total,
-            pricingStrategy.getStrategyName()
+            strategy.getStrategyName()
         );
 
-        // Persist to DB
         historyRepository.save(record);
-
-        // Record in audit log
         OrderHistoryLog.getInstance().append(record);
     }
 }

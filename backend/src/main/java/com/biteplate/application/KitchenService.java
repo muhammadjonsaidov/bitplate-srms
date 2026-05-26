@@ -1,6 +1,9 @@
 package com.biteplate.application;
 
 import com.biteplate.domain.kitchen.*;
+import com.biteplate.domain.notification.KitchenDisplayObserver;
+import com.biteplate.domain.notification.ManagerDashboard;
+import com.biteplate.domain.notification.WaiterNotifier;
 import com.biteplate.domain.order.Order;
 import com.biteplate.domain.order.OrderStatus;
 import com.biteplate.infrastructure.persistence.OrderRepository;
@@ -16,39 +19,37 @@ import java.util.Optional;
 public class KitchenService {
 
     private final OrderRepository orderRepository;
-    private final KitchenQueue kitchenQueue; // COMMAND PATTERN — invoker
+    private final KitchenQueue kitchenQueue;
+
+    private final WaiterNotifier waiterNotifier;
+    private final ManagerDashboard managerDashboard;
+    private final KitchenDisplayObserver kitchenDisplayObserver;
 
     public List<Order> getQueue() {
         return orderRepository.findActiveOrders();
     }
 
-    /**
-     * COMMAND PATTERN — wraps action in PrepareOrderCommand and executes via KitchenQueue.
-     */
     @Transactional
     public Order prepareOrder(Long orderId) {
-        Order order = findById(orderId);
+        Order order = loadWithObservers(orderId);
         kitchenQueue.execute(new PrepareOrderCommand(order));
         return orderRepository.save(order);
     }
 
     @Transactional
     public Order markReady(Long orderId) {
-        Order order = findById(orderId);
+        Order order = loadWithObservers(orderId);
         kitchenQueue.execute(new ExpediteOrderCommand(order));
         return orderRepository.save(order);
     }
 
     @Transactional
     public Order cancelOrder(Long orderId) {
-        Order order = findById(orderId);
+        Order order = loadWithObservers(orderId);
         kitchenQueue.execute(new CancelOrderCommand(order));
         return orderRepository.save(order);
     }
 
-    /**
-     * COMMAND PATTERN — undo support via KitchenQueue history.
-     */
     @Transactional
     public Optional<String> undoLastAction() {
         return kitchenQueue.undoLast();
@@ -56,13 +57,22 @@ public class KitchenService {
 
     @Transactional
     public Order markServed(Long orderId) {
-        Order order = findById(orderId);
+        Order order = loadWithObservers(orderId);
         order.updateStatus(OrderStatus.SERVED);
         return orderRepository.save(order);
     }
 
-    private Order findById(Long id) {
-        return orderRepository.findById(id)
+    /**
+     * Loads an order from the database and re-registers observers.
+     * Observers are @Transient and not persisted, so they must be re-attached
+     * each time an order is loaded for status updates.
+     */
+    private Order loadWithObservers(Long id) {
+        Order order = orderRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Order not found: " + id));
+        order.addObserver(waiterNotifier);
+        order.addObserver(managerDashboard);
+        order.addObserver(kitchenDisplayObserver);
+        return order;
     }
 }

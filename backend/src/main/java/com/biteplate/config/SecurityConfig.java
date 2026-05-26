@@ -54,6 +54,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/kitchen/**").hasAnyRole("HEAD_CHEF", "MANAGER")
                 .requestMatchers("/api/billing/**").hasAnyRole("CASHIER", "MANAGER")
                 .requestMatchers("/api/menu/admin/**").hasRole("MANAGER")
+                .requestMatchers("/api/reservations/**").hasAnyRole("WAITER", "MANAGER")
                 .requestMatchers("/api/reports/**").hasRole("MANAGER")
                 .anyRequest().authenticated()
             )

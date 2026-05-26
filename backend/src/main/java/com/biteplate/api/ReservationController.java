@@ -20,7 +20,7 @@ import java.util.List;
 
 @Tag(name = "Reservations", description = "Table reservation management")
 @RestController
-@RequestMapping("/reservations")
+@RequestMapping("/api/reservations")
 @RequiredArgsConstructor
 public class ReservationController {
 

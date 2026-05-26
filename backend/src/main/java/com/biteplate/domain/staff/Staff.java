@@ -1,5 +1,6 @@
 package com.biteplate.domain.staff;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -33,6 +34,7 @@ public abstract class Staff {
     @Column(nullable = false, unique = true, length = 50)
     private String username;
 
+    @JsonIgnore
     @Column(nullable = false)
     private String password;
 

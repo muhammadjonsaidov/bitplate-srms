@@ -4,6 +4,8 @@ import com.biteplate.domain.notification.OrderObserver;
 import com.biteplate.domain.notification.OrderSubject;
 import com.biteplate.domain.staff.Staff;
 import com.biteplate.domain.table.RestaurantTable;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -52,10 +54,12 @@ public class Order implements OrderSubject {
     private LocalDateTime updatedAt = LocalDateTime.now();
 
     /** COMPOSITION — OrderItems cannot exist without this Order */
+    @JsonManagedReference
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
 
-    /** Transient — observers not persisted */
+    /** Transient — observers not persisted, excluded from serialization */
+    @JsonIgnore
     @Transient
     private final List<OrderObserver> observers = new ArrayList<>();
 

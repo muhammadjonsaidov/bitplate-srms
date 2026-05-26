@@ -79,6 +79,10 @@ public class OrderService {
     public Order submit(Long orderId) {
         Order order = findById(orderId);
         if (order.getItems().isEmpty()) throw new IllegalStateException("Cannot submit empty order");
+        // Re-register observers (transient — not persisted) before notifying kitchen
+        order.addObserver(waiterNotifier);
+        order.addObserver(managerDashboard);
+        order.addObserver(kitchenDisplayObserver);
         order.updateStatus(OrderStatus.PENDING);
         return orderRepository.save(order);
     }

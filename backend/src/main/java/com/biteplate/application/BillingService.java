@@ -38,11 +38,9 @@ public class BillingService {
         Order order = orderRepository.findById(orderId)
             .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
 
-        // Select and inject strategy — STRATEGY PATTERN runtime swap
+        // STRATEGY PATTERN — resolve and pass strategy at runtime
         PricingStrategy strategy = selectStrategy(strategyName);
-        billingFacade.setPricingStrategy(strategy);
-
-        return billingFacade.generateBill(order);
+        return billingFacade.generateBill(order, strategy);
     }
 
     @Transactional

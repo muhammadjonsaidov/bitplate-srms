@@ -16,7 +16,7 @@ public class OpenApiConfig {
         return new OpenAPI()
             .info(new Info()
                 .title("BitePlate SRMS API")
-                .description("Smart Restaurant Management System — Unit 27: Advanced Programming (BTEC Level 5)")
+                .description("REST API for BitePlate Smart Restaurant Management System")
                 .version("1.0.0"))
             .addSecurityItem(new SecurityRequirement().addList("Bearer Auth"))
             .components(new Components()
