@@ -5,6 +5,13 @@ import { fetchOrdersByTable } from '../api/orders'
 import { generateBill, applyTip, splitBill, markBillPaid } from '../api/billing'
 import { Bill, Table } from '../types'
 import toast from 'react-hot-toast'
+import { CreditCard, Receipt, Users, Percent, CheckCircle2, ChevronRight } from 'lucide-react'
+
+const strategies = [
+  { value: 'STANDARD',     label: 'Standard',         desc: 'Regular pricing' },
+  { value: 'HAPPY_HOUR',   label: 'Happy Hour',        desc: '20% off total' },
+  { value: 'LOYALTY_CARD', label: 'Loyalty Card',      desc: '10% off + free drink' },
+]
 
 export default function BillingPage() {
   const qc = useQueryClient()
@@ -34,7 +41,7 @@ export default function BillingPage() {
 
   const tip = useMutation({
     mutationFn: () => applyTip(bill!.id, parseFloat(tipAmount) || 0),
-    onSuccess: (data) => { setBill(data); toast.success('Tip applied') },
+    onSuccess: (data) => { setBill(data); setTipAmount(''); toast.success('Tip applied') },
   })
 
   const split = useMutation({
@@ -53,69 +60,160 @@ export default function BillingPage() {
   })
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Billing & POS</h2>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Billing</h1>
+        <p className="text-sm text-slate-500 mt-1">Generate bills, apply discounts, and process payments</p>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow p-6">
-          <h3 className="font-semibold mb-4">Select Table</h3>
-          <select className="w-full border rounded-lg px-3 py-2 mb-4"
-            value={selectedTableId ?? ''} onChange={e => { setSelectedTableId(Number(e.target.value)); setBill(null) }}>
-            <option value="">— Choose table —</option>
-            {occupiedTables.map((t: Table) => (
-              <option key={t.id} value={t.id}>Table {t.tableNumber} ({t.status})</option>
-            ))}
-          </select>
-          <label className="block text-sm font-medium mb-1">Pricing Strategy</label>
-          <select className="w-full border rounded-lg px-3 py-2 mb-4"
-            value={strategy} onChange={e => setStrategy(e.target.value)}>
-            <option value="STANDARD">Standard</option>
-            <option value="HAPPY_HOUR">Happy Hour (20% off)</option>
-            <option value="LOYALTY_CARD">Loyalty Card (10% + free drink)</option>
-          </select>
-          <button disabled={!selectedTableId || !latestOrder}
+        {/* Left — setup */}
+        <div className="card p-6 space-y-5">
+          <h2 className="font-semibold text-slate-900">Setup</h2>
+
+          {/* Table selector */}
+          <div>
+            <label className="label">Table</label>
+            {occupiedTables.length === 0 ? (
+              <p className="text-sm text-slate-500">No tables awaiting bill.</p>
+            ) : (
+              <div className="space-y-2">
+                {occupiedTables.map((t: Table) => (
+                  <button
+                    key={t.id}
+                    onClick={() => { setSelectedTableId(t.id); setBill(null) }}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-colors ${
+                      selectedTableId === t.id
+                        ? 'border-biteplate-500 bg-biteplate-50 text-biteplate-700'
+                        : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                    }`}
+                  >
+                    <span className="font-medium">Table {t.tableNumber}</span>
+                    <span className={`badge ${
+                      t.status === 'AWAITING_BILL' ? 'bg-amber-100 text-amber-700' : 'bg-orange-100 text-orange-700'
+                    }`}>
+                      {t.status === 'AWAITING_BILL' ? 'Awaiting Bill' : 'Occupied'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Pricing strategy */}
+          <div>
+            <label className="label">Pricing strategy</label>
+            <div className="space-y-2">
+              {strategies.map(s => (
+                <button
+                  key={s.value}
+                  onClick={() => setStrategy(s.value)}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border text-sm transition-colors ${
+                    strategy === s.value
+                      ? 'border-biteplate-500 bg-biteplate-50'
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="text-left">
+                    <div className="font-medium text-slate-900">{s.label}</div>
+                    <div className="text-xs text-slate-500">{s.desc}</div>
+                  </div>
+                  {strategy === s.value && <ChevronRight size={14} className="text-biteplate-600" />}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            disabled={!selectedTableId || !latestOrder}
             onClick={() => genBill.mutate({ orderId: latestOrder?.id })}
-            className="w-full bg-biteplate-600 text-white py-2 rounded-lg disabled:opacity-40">
-            Generate Bill
+            className="btn-primary w-full flex items-center justify-center gap-2"
+          >
+            <Receipt size={15} />
+            Generate bill
           </button>
         </div>
 
-        {bill && (
-          <div className="bg-white rounded-xl shadow p-6">
-            <h3 className="font-semibold mb-4">Bill #{bill.id}</h3>
-            <div className="space-y-1 mb-4">
+        {/* Right — bill */}
+        {bill ? (
+          <div className="card p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-slate-900">Bill #{bill.id}</h2>
+              <span className="badge bg-amber-100 text-amber-700">Unpaid</span>
+            </div>
+
+            {/* Line items */}
+            <div className="space-y-2">
               {bill.lineItems.map(item => (
-                <div key={item.id} className="flex justify-between text-sm">
+                <div key={item.id} className="flex justify-between text-sm text-slate-700">
                   <span>{item.description}</span>
-                  <span>£{item.amount.toFixed(2)}</span>
+                  <span className="font-medium tabular-nums">£{item.amount.toFixed(2)}</span>
                 </div>
               ))}
-              <div className="border-t pt-2 flex justify-between font-bold">
-                <span>Total</span><span>£{bill.total.toFixed(2)}</span>
+              <div className="border-t border-slate-200 pt-3 flex justify-between font-bold text-slate-900">
+                <span>Total</span>
+                <span className="tabular-nums">£{bill.total.toFixed(2)}</span>
               </div>
               {bill.splitCount > 1 && (
-                <div className="text-sm text-gray-500 text-right">
-                  Per guest: £{(bill.total / bill.splitCount).toFixed(2)}
+                <div className="text-right text-sm text-slate-500">
+                  Per guest: <span className="font-semibold text-slate-700 tabular-nums">£{(bill.total / bill.splitCount).toFixed(2)}</span>
                 </div>
               )}
             </div>
-            <div className="flex gap-2 mb-2">
-              <input type="number" placeholder="Tip £" className="flex-1 border rounded px-2 py-1 text-sm"
-                value={tipAmount} onChange={e => setTipAmount(e.target.value)} />
-              <button onClick={() => tip.mutate()} className="text-sm bg-yellow-500 text-white px-3 py-1 rounded">
-                Add Tip
-              </button>
+
+            {/* Tip */}
+            <div>
+              <label className="label flex items-center gap-1"><Percent size={12} /> Add tip</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  placeholder="Amount (£)"
+                  className="input"
+                  value={tipAmount}
+                  onChange={e => setTipAmount(e.target.value)}
+                  min="0"
+                  step="0.01"
+                />
+                <button onClick={() => tip.mutate()} disabled={!tipAmount} className="btn-secondary whitespace-nowrap">
+                  Apply
+                </button>
+              </div>
             </div>
-            <div className="flex gap-2 mb-4">
-              <input type="number" placeholder="Guests" className="flex-1 border rounded px-2 py-1 text-sm"
-                value={guestCount} onChange={e => setGuestCount(e.target.value)} />
-              <button onClick={() => split.mutate()} className="text-sm bg-blue-500 text-white px-3 py-1 rounded">
-                Split
-              </button>
+
+            {/* Split */}
+            <div>
+              <label className="label flex items-center gap-1"><Users size={12} /> Split bill</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  placeholder="No. of guests"
+                  className="input"
+                  value={guestCount}
+                  onChange={e => setGuestCount(e.target.value)}
+                  min="1"
+                />
+                <button onClick={() => split.mutate()} disabled={!guestCount} className="btn-secondary whitespace-nowrap">
+                  Split
+                </button>
+              </div>
             </div>
-            <button onClick={() => pay.mutate()}
-              className="w-full bg-green-600 text-white py-2 rounded-lg font-medium">
-              ✓ Process Payment
+
+            {/* Pay */}
+            <button
+              onClick={() => pay.mutate()}
+              disabled={pay.isPending}
+              className="btn-success w-full flex items-center justify-center gap-2 py-3"
+            >
+              <CheckCircle2 size={16} />
+              <CreditCard size={16} />
+              Process payment
             </button>
+          </div>
+        ) : (
+          <div className="card p-6 flex flex-col items-center justify-center text-slate-400 min-h-[300px]">
+            <Receipt size={40} className="mb-3 text-slate-200" />
+            <p className="text-sm font-medium">No bill generated yet</p>
+            <p className="text-xs mt-1">Select a table and click "Generate bill"</p>
           </div>
         )}
       </div>

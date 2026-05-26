@@ -4,16 +4,21 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+      },
       colors: {
         biteplate: {
-          50:  '#fdf8f0',
-          100: '#faefd9',
-          200: '#f4d9a8',
-          500: '#c47c2b',
-          600: '#a86522',
-          700: '#8b501a',
-          800: '#6e3d14',
-          900: '#5c3410',
+          50:  '#fff7ed',
+          100: '#ffedd5',
+          200: '#fed7aa',
+          300: '#fdba74',
+          400: '#fb923c',
+          500: '#f97316',
+          600: '#ea580c',
+          700: '#c2410c',
+          800: '#9a3412',
+          900: '#7c2d12',
         }
       }
     },

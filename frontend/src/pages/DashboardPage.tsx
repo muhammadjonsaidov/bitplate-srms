@@ -2,6 +2,16 @@ import { useQuery } from '@tanstack/react-query'
 import { fetchTables } from '../api/tables'
 import { fetchKitchenQueue } from '../api/kitchen'
 import { Table, Order } from '../types'
+import {
+  LayoutGrid,
+  Users,
+  Receipt,
+  CalendarClock,
+  Clock,
+  Flame,
+  CheckCircle2,
+  TrendingUp,
+} from 'lucide-react'
 
 export default function DashboardPage() {
   const { data: tables = [] } = useQuery({
@@ -32,66 +42,79 @@ export default function DashboardPage() {
     : 0
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-gray-800">Overview</h2>
-        <p className="text-sm text-gray-500 mt-1">Live restaurant status</p>
+        <h1 className="text-2xl font-bold text-slate-900">Overview</h1>
+        <p className="text-sm text-slate-500 mt-1">Live restaurant status — refreshes automatically</p>
       </div>
 
       {/* Table status */}
-      <div>
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Tables</h3>
+      <section>
+        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">Floor status</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: 'Free',          count: tableCounts.free,     bg: 'bg-green-50',  border: 'border-green-200',  text: 'text-green-700' },
-            { label: 'Occupied',      count: tableCounts.occupied, bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700' },
-            { label: 'Awaiting Bill', count: tableCounts.awaiting, bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-700' },
-            { label: 'Reserved',      count: tableCounts.reserved, bg: 'bg-blue-50',   border: 'border-blue-200',   text: 'text-blue-700' },
-          ].map(({ label, count, bg, border, text }) => (
-            <div key={label} className={`${bg} border ${border} rounded-xl p-5`}>
-              <div className={`text-3xl font-bold ${text}`}>{count}</div>
-              <div className={`text-sm ${text} mt-1`}>{label}</div>
+            { label: 'Available',     count: tableCounts.free,     icon: LayoutGrid,   bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', iconBg: 'bg-emerald-100' },
+            { label: 'Occupied',      count: tableCounts.occupied, icon: Users,        bg: 'bg-orange-50',  border: 'border-orange-200',  text: 'text-orange-700',  iconBg: 'bg-orange-100' },
+            { label: 'Awaiting Bill', count: tableCounts.awaiting, icon: Receipt,      bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-700',   iconBg: 'bg-amber-100' },
+            { label: 'Reserved',      count: tableCounts.reserved, icon: CalendarClock, bg: 'bg-blue-50',   border: 'border-blue-200',    text: 'text-blue-700',    iconBg: 'bg-blue-100' },
+          ].map(({ label, count, icon: Icon, bg, border, text, iconBg }) => (
+            <div key={label} className={`${bg} border ${border} rounded-xl p-5 flex items-start gap-4`}>
+              <div className={`${iconBg} p-2 rounded-lg`}>
+                <Icon size={18} className={text} />
+              </div>
+              <div>
+                <div className={`text-3xl font-bold ${text}`}>{count}</div>
+                <div className={`text-xs font-medium ${text} mt-0.5 opacity-80`}>{label}</div>
+              </div>
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
-      {/* Kitchen status */}
-      <div>
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Kitchen</h3>
+      {/* Kitchen queue */}
+      <section>
+        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">Kitchen queue</h2>
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: 'Pending',   count: orderCounts.pending,   bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-700' },
-            { label: 'Preparing', count: orderCounts.preparing, bg: 'bg-blue-50',   border: 'border-blue-200',   text: 'text-blue-700' },
-            { label: 'Ready',     count: orderCounts.ready,     bg: 'bg-green-50',  border: 'border-green-200',  text: 'text-green-700' },
-          ].map(({ label, count, bg, border, text }) => (
-            <div key={label} className={`${bg} border ${border} rounded-xl p-5`}>
-              <div className={`text-3xl font-bold ${text}`}>{count}</div>
-              <div className={`text-sm ${text} mt-1`}>{label}</div>
+            { label: 'Pending',   count: orderCounts.pending,   icon: Clock,         bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-700',   iconBg: 'bg-amber-100' },
+            { label: 'Preparing', count: orderCounts.preparing, icon: Flame,         bg: 'bg-blue-50',    border: 'border-blue-200',    text: 'text-blue-700',    iconBg: 'bg-blue-100' },
+            { label: 'Ready',     count: orderCounts.ready,     icon: CheckCircle2,  bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', iconBg: 'bg-emerald-100' },
+          ].map(({ label, count, icon: Icon, bg, border, text, iconBg }) => (
+            <div key={label} className={`${bg} border ${border} rounded-xl p-5 flex items-start gap-4`}>
+              <div className={`${iconBg} p-2 rounded-lg`}>
+                <Icon size={18} className={text} />
+              </div>
+              <div>
+                <div className={`text-3xl font-bold ${text}`}>{count}</div>
+                <div className={`text-xs font-medium ${text} mt-0.5 opacity-80`}>{label}</div>
+              </div>
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
-      {/* Summary bar */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5 flex items-center justify-between">
-        <div>
-          <p className="text-sm text-gray-500">Occupancy rate</p>
-          <p className="text-2xl font-bold text-gray-800">{occupancyPct}%</p>
+      {/* Summary */}
+      <section>
+        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-4">Summary</h2>
+        <div className="card p-5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100">
+            {[
+              { label: 'Occupancy rate',  value: `${occupancyPct}%`, icon: TrendingUp,   color: 'text-biteplate-600' },
+              { label: 'Total tables',    value: t.length,            icon: LayoutGrid,   color: 'text-slate-700' },
+              { label: 'Active orders',   value: o.length,            icon: Flame,        color: 'text-slate-700' },
+              { label: 'Ready to serve',  value: orderCounts.ready,   icon: CheckCircle2, color: 'text-emerald-600' },
+            ].map(({ label, value, icon: Icon, color }) => (
+              <div key={label} className="px-6 first:pl-0 last:pr-0 flex items-center gap-3">
+                <Icon size={20} className={`${color} flex-shrink-0`} />
+                <div>
+                  <p className="text-xs text-slate-500">{label}</p>
+                  <p className={`text-2xl font-bold ${color}`}>{value}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div>
-          <p className="text-sm text-gray-500">Total tables</p>
-          <p className="text-2xl font-bold text-gray-800">{t.length}</p>
-        </div>
-        <div>
-          <p className="text-sm text-gray-500">Active orders</p>
-          <p className="text-2xl font-bold text-gray-800">{o.length}</p>
-        </div>
-        <div>
-          <p className="text-sm text-gray-500">Ready to serve</p>
-          <p className="text-2xl font-bold text-green-600">{orderCounts.ready}</p>
-        </div>
-      </div>
+      </section>
     </div>
   )
 }
