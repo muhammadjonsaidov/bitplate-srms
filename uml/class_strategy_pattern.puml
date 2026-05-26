@@ -1,0 +1,92 @@
+@startuml BitePlate_Class_StrategyPattern
+title BitePlate SRMS — Strategy Pattern (Focused Diagram)
+
+skinparam backgroundColor white
+skinparam classAttributeIconSize 0
+
+note as N1
+  STRATEGY PATTERN
+  BillingFacade (Context) delegates total
+  calculation to a PricingStrategy.
+  Strategy swapped at runtime by BillingService
+  based on time of day / loyalty status.
+  Open/Closed: add new pricing without
+  modifying BillingFacade.
+end note
+
+interface PricingStrategy <<Strategy>> {
+  +calculateTotal(order : Order) : BigDecimal
+  +getStrategyName() : String
+}
+
+class StandardPricingStrategy <<ConcreteStrategy>> {
+  +calculateTotal(order : Order) : BigDecimal
+  +getStrategyName() : String
+}
+note right of StandardPricingStrategy
+  Full price.
+  sum(orderItem.lineTotal)
+end note
+
+class HappyHourPricingStrategy <<ConcreteStrategy>> {
+  -DISCOUNT_RATE : BigDecimal = 0.20  {static}
+  +calculateTotal(order : Order) : BigDecimal
+  +getStrategyName() : String
+}
+note right of HappyHourPricingStrategy
+  20% off subtotal.
+  Active: 15:00 – 17:00
+  subtotal × (1 – 0.20)
+end note
+
+class LoyaltyCardPricingStrategy <<ConcreteStrategy>> {
+  -DISCOUNT_RATE : BigDecimal = 0.10  {static}
+  -DRINK_CREDIT : BigDecimal = 3.00   {static}
+  +calculateTotal(order : Order) : BigDecimal
+  +getStrategyName() : String
+}
+note right of LoyaltyCardPricingStrategy
+  10% off + £3.00 drink credit.
+  subtotal × 0.90 – 3.00
+end note
+
+class BillingFacade <<Context>> {
+  -pricingStrategy : PricingStrategy
+  +setPricingStrategy(s : PricingStrategy) : void
+  +generateBill(order : Order, strategy : String) : Bill
+}
+
+class BillingService {
+  -billingFacade : BillingFacade
+  +generateBill(orderId : Long, strategyName : String) : Bill
+  -selectStrategy(name : String) : PricingStrategy
+}
+
+class Order {
+  -id : Long
+  -items : List<OrderItem>
+  +getItems() : List<OrderItem>
+}
+
+StandardPricingStrategy    ..|> PricingStrategy
+HappyHourPricingStrategy   ..|> PricingStrategy
+LoyaltyCardPricingStrategy ..|> PricingStrategy
+BillingFacade o-- PricingStrategy : strategy >
+BillingService --> BillingFacade : configures >
+BillingService ..> PricingStrategy : <<creates>>
+BillingFacade --> Order : reads items >
+
+note bottom of BillingService
+  selectStrategy(name):
+    LocalTime now = LocalTime.now()
+    return switch(name) {
+      "HAPPY_HOUR" -> new HappyHourPricingStrategy()
+      "LOYALTY"    -> new LoyaltyCardPricingStrategy()
+      default      ->
+        (now >= 15:00 && now < 17:00)
+          ? new HappyHourPricingStrategy()
+          : new StandardPricingStrategy()
+    }
+end note
+
+@enduml

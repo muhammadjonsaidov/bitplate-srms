@@ -1,0 +1,118 @@
+@startuml BitePlate_UseCaseDiagram
+title BitePlate SRMS — System Use Case Diagram
+
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam backgroundColor white
+
+actor Customer
+actor Waiter
+actor "Head Chef" as Chef
+actor Cashier
+actor Manager
+actor System
+
+rectangle "Table Management" {
+  usecase "View Table Status" as UC1
+  usecase "Reserve Table" as UC2
+  usecase "Seat Customer" as UC3
+  usecase "Clear Table" as UC4
+}
+
+rectangle "Order Management" {
+  usecase "Place Order" as UC5
+  usecase "Modify Order" as UC6
+  usecase "Cancel Order" as UC7
+  usecase "View Order Status" as UC8
+}
+
+rectangle "Kitchen Operations" {
+  usecase "View Kitchen Queue" as UC9
+  usecase "Prepare Order" as UC10
+  usecase "Expedite Order" as UC11
+  usecase "Undo Last Action" as UC12
+}
+
+rectangle "Billing & POS" {
+  usecase "Generate Bill" as UC13
+  usecase "Apply Tip" as UC14
+  usecase "Split Bill" as UC15
+  usecase "Process Payment" as UC16
+}
+
+rectangle "Menu Management" {
+  usecase "View Menu" as UC17
+  usecase "Add Menu Item" as UC18
+  usecase "Customise Dish" as UC19
+}
+
+rectangle "Reporting" {
+  usecase "View Order History" as UC20
+  usecase "View Analytics" as UC21
+}
+
+rectangle "Authentication" {
+  usecase "Login" as UC23
+  usecase "Logout" as UC24
+}
+
+Customer --> UC2
+Customer --> UC19
+
+Waiter --> UC1
+Waiter --> UC3
+Waiter --> UC4
+Waiter --> UC5
+Waiter --> UC6
+Waiter --> UC8
+Waiter --> UC17
+Waiter --> UC23
+Waiter --> UC24
+
+Chef --> UC9
+Chef --> UC10
+Chef --> UC11
+Chef --> UC12
+Chef --> UC17
+Chef --> UC18
+Chef --> UC23
+
+Cashier --> UC8
+Cashier --> UC13
+Cashier --> UC14
+Cashier --> UC15
+Cashier --> UC16
+Cashier --> UC23
+
+Manager --> UC1
+Manager --> UC2
+Manager --> UC3
+Manager --> UC4
+Manager --> UC5
+Manager --> UC6
+Manager --> UC7
+Manager --> UC8
+Manager --> UC9
+Manager --> UC10
+Manager --> UC11
+Manager --> UC12
+Manager --> UC13
+Manager --> UC14
+Manager --> UC15
+Manager --> UC16
+Manager --> UC17
+Manager --> UC18
+Manager --> UC20
+Manager --> UC21
+Manager --> UC23
+
+UC5 .> UC19 : <<extend>>
+UC13 .> UC14 : <<extend>>
+UC13 .> UC15 : <<extend>>
+UC10 .> UC9 : <<include>>
+UC21 .> UC20 : <<include>>
+
+System --> UC8 : updates via Observer
+System --> UC20 : records automatically
+
+@enduml

@@ -1,0 +1,124 @@
+@startuml BitePlate_Activity_OrderLifecycle
+title BitePlate SRMS — Order Lifecycle Activity Diagram
+
+skinparam backgroundColor white
+skinparam activityArrowThickness 2
+skinparam swimlaneWidth 200
+
+|Waiter|
+start
+:Seat customer\n(tableId=3);
+note right: Table.occupy()\nState: FREE → OCCUPIED
+
+:Create order\n(tableId=3);
+note right: OrderService registers\nWaiterNotifier\nManagerDashboard\nKitchenDisplayObserver
+
+:Search menu item;
+
+|System (Factory + Decorator)|
+:MenuItemFactory.forCategory(category);
+if (Category?) then (STARTER)
+  :StarterFactory.createAndValidate();
+elseif (MAIN_COURSE)
+  :MainCourseFactory.createAndValidate();
+elseif (DESSERT)
+  :DessertFactory.createAndValidate();
+else (BEVERAGE)
+  :BeverageFactory.createAndValidate();
+endif
+
+if (Allergen detected?) then (yes)
+  :new AllergenFlagDecorator(item, allergen);
+  note right: Wraps item with ⚠️
+else (no)
+endif
+
+|Waiter|
+:Item added to order;
+
+if (Add more items?) then (yes)
+  :Search menu item;
+  note right: <<loop>>
+else (no)
+endif
+
+:Submit order;
+
+|System (Command)|
+:new PrepareOrderCommand(order);
+:KitchenQueue.execute(cmd);
+:cmd.execute() → Order.updateStatus(PREPARING);
+:notifyObservers();
+
+|Observer Notifications|
+fork
+  :WaiterNotifier\n→ Redis Pub/Sub\nnotifications:waiter;
+fork again
+  :ManagerDashboard\n→ Redis Pub/Sub\nnotifications:manager;
+fork again
+  :KitchenDisplayObserver\n→ Redis Pub/Sub\nnotifications:kitchen;
+end fork
+
+:LPUSH kitchen:queue\n"PREPARE #42";
+
+|Head Chef|
+:View kitchen queue\n(RPOP from Redis List);
+:Cook food;
+
+if (Need to expedite?) then (yes)
+  :KitchenQueue.execute\n(ExpediteOrderCommand);
+else (no)
+endif
+
+:KitchenQueue.execute\n(ready: updateStatus(READY));
+:notifyObservers() → READY;
+
+|Observer Notifications|
+:WaiterNotifier PUBLISH\n"ORDER READY: Table 3 #42";
+
+|Waiter|
+:Deliver food to table;
+:Request bill (tableId=3);
+note right: Table.awaitBill()\nState: OCCUPIED → AWAITING_BILL
+
+|Cashier|
+:generateBill(order, "STANDARD");
+
+|System (Facade + Strategy)|
+if (Time 15:00-17:00?) then (yes)
+  :HappyHourPricingStrategy\n(20% discount);
+elseif (Loyalty card?) then (yes)
+  :LoyaltyCardPricingStrategy\n(10% off + £3 credit);
+else (no)
+  :StandardPricingStrategy;
+endif
+
+:PricingStrategy.calculateTotal(order) → subtotal;
+:TaxCalculator.calculateTax(subtotal)\n20% VAT;
+:BillingFacade.buildLineItems();
+:OrderHistoryLog.getInstance().append(record);
+note right: SINGLETON\nDouble-checked locking
+
+|Cashier|
+:Present bill to customer;
+
+if (Apply tip?) then (yes)
+  :BillingFacade.addTip(billId, tipPct);
+else (no)
+endif
+
+if (Split bill?) then (yes)
+  :SplitBillService.split(total, ways);
+else (no)
+endif
+
+:Process payment;
+:BillingFacade.markPaid(billId);
+
+|Waiter|
+:clearTable(tableId=3);
+note right: Table.clear()\nState: AWAITING_BILL → CLEARED → FREE
+
+stop
+
+@enduml

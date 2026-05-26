@@ -1,0 +1,65 @@
+@startuml BitePlate_Activity_HistoryQuery
+title BitePlate SRMS — Order History Recording & Query\n(Singleton + Iterator Patterns)
+
+skinparam backgroundColor white
+skinparam activityArrowThickness 2
+
+|BillingFacade|
+start
+:generateBill(order, strategy);
+
+:Build OrderRecord {
+  orderId, tableId, total,
+  timestamp, strategyName
+};
+
+:OrderHistoryLog.getInstance();
+note right
+  SINGLETON — double-checked locking:
+  if (instance == null) {
+    synchronized(OrderHistoryLog.class) {
+      if (instance == null)
+        instance = new OrderHistoryLog();
+    }
+  }
+  return instance;
+end note
+
+:instance.append(orderRecord);
+note right: CopyOnWriteArrayList\n(thread-safe write)
+
+|Manager / Dashboard|
+:Request order history\n(GET /billing/history);
+
+:OrderHistoryLog.getInstance();
+note right: Same singleton instance\nreturned across all subsystems
+
+:iterator = instance.iterator();
+note right
+  Creates OrderHistoryIterator
+  with snapshot copy of records
+  — safe for concurrent reads
+end note
+
+:snapshot = List.copyOf(records);
+
+while (iterator.hasNext()?) is (true)
+  :record = iterator.next();
+  :Add record to response list;
+endwhile (false)
+
+:Return List<OrderRecord> to Manager;
+
+if (Apply date filter?) then (yes)
+  :Filter records by\ntimestamp range;
+else (no)
+endif
+
+if (Export CSV?) then (yes)
+  :Stream records through\nOrderHistoryIterator\nto CSV writer;
+else (no)
+endif
+
+stop
+
+@enduml

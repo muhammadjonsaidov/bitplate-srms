@@ -1,0 +1,24 @@
+version: '3.9'
+
+services:
+  postgres:
+    restart: unless-stopped
+    ports: []  # No external port exposure in production
+
+  redis:
+    restart: unless-stopped
+    ports: []
+
+  backend:
+    image: ghcr.io/muhammadjonsaidov/bitplate-srms/backend:latest
+    build: !reset null
+    restart: unless-stopped
+    ports: []
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+  frontend:
+    image: ghcr.io/muhammadjonsaidov/bitplate-srms/frontend:latest
+    build: !reset null
+    restart: unless-stopped
+    ports: []

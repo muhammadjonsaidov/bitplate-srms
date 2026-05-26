@@ -1,0 +1,91 @@
+@startuml BitePlate_Sequence_OrderLifecycle
+title BitePlate SRMS — Complete Order Lifecycle (Sequence Diagram)
+
+skinparam backgroundColor white
+skinparam sequenceArrowThickness 2
+
+actor Waiter
+participant ":TableService" as TS
+participant "Table\n[State Pattern]" as T
+participant ":OrderService" as OS
+participant "MenuItemFactory\n[Factory Method]" as MF
+participant "AllergenFlagDecorator\n[Decorator]" as DEC
+participant ":Order\n[Observer Subject]" as O
+participant ":KitchenQueue\n[Command Invoker]" as KQ
+participant "PrepareOrderCommand\n[Command]" as CMD
+participant "Redis List" as R
+participant "WaiterNotifier\n[Observer]" as WN
+participant "ManagerDashboard\n[Observer]" as MGR
+participant ":BillingFacade\n[Facade]" as BF
+participant ":PricingStrategy\n[Strategy]" as PS
+participant ":TaxCalculator" as TC
+participant "OrderHistoryLog\n[Singleton]" as OHL
+actor Cashier
+
+== 1. Seat Customer (State Pattern) ==
+Waiter -> TS: seatCustomer(tableId=3)
+TS -> T: occupy()
+T -> T: FreeState.occupy()\nsetStatus(OCCUPIED)\nsetCurrentState(OccupiedState)
+TS --> Waiter: Table 3 → OCCUPIED
+
+== 2. Create Order ==
+Waiter -> OS: createOrder(tableId=3)
+OS -> OS: registerObservers()
+OS --> Waiter: Order #42 (PENDING)
+
+== 3. Add Items (Factory + Decorator) ==
+Waiter -> OS: addItem(orderId=42, menuItemId=7, qty=2)
+OS -> MF: MenuItemFactory.forCategory("MAIN_COURSE")
+MF --> OS: MainCourseFactory
+OS -> MF: createAndValidate("Ribeye Steak", £28.00)
+MF --> OS: new MainCourse
+note right: Allergen detected
+OS -> DEC: new AllergenFlagDecorator(mainCourse, "gluten")
+DEC --> OS: decorated item ⚠️
+OS --> Waiter: item added (allergenFlagged=true)
+
+== 4. Submit Order (Command Pattern) ==
+Waiter -> OS: submitOrder(orderId=42)
+OS -> KQ: execute(new PrepareOrderCommand(order))
+KQ -> CMD: execute()
+CMD -> O: updateStatus(PREPARING)
+O -> WN: onOrderStatusChanged(PREPARING)
+O -> MGR: onOrderStatusChanged(PREPARING)
+KQ -> R: LPUSH kitchen:queue "PREPARE #42"
+KQ --> OS: command queued + executed
+
+== 5. Kitchen Prepares (Command) ==
+note over KQ,CMD: Chef views queue, cooks food
+KQ -> CMD: execute(ExpediteOrderCommand)
+CMD -> O: updateStatus(READY)
+O -> WN: onOrderStatusChanged(READY)
+WN -> R: PUBLISH notifications:waiter:2\n"ORDER READY: Table 3 #42"
+O -> MGR: onOrderStatusChanged(READY)
+
+== 6. Request Bill (State Pattern) ==
+Waiter -> TS: requestBill(tableId=3)
+TS -> T: awaitBill()
+T -> T: OccupiedState.awaitBill()\nsetStatus(AWAITING_BILL)
+
+== 7. Generate Bill (Facade + Strategy) ==
+Cashier -> BF: generateBill(order, "STANDARD")
+BF -> PS: calculateTotal(order) [StandardPricingStrategy]
+PS --> BF: £56.00
+BF -> TC: calculateTax(£56.00)
+TC --> BF: £11.20 (20% VAT)
+BF -> BF: buildLineItems()
+BF -> OHL: getInstance().append(OrderRecord)
+note right of OHL
+  SINGLETON — same instance
+  across all subsystems.
+  Double-checked locking.
+end note
+BF --> Cashier: Bill #17 — Total £67.20
+
+== 8. Payment & Clear ==
+Cashier -> BF: markPaid(billId=17)
+Cashier -> TS: clearTable(tableId=3)
+TS -> T: clear()
+T -> T: AwaitingBillState.clear()\nsetStatus(CLEARED)\nsetCurrentState(ClearedState)\nclear() → FreeState
+
+@enduml
