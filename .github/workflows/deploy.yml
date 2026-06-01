@@ -88,6 +88,8 @@ jobs:
           context: frontend
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/frontend:latest,${{ env.IMAGE_PREFIX }}/frontend:${{ github.sha }}
+          build-args: |
+            VITE_API_BASE_URL=https://api.saidovmuhammadjon.me
 
   deploy:
     name: Deploy to Server
