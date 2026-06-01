@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -44,6 +45,7 @@ public class OrderController {
 
     @Operation(summary = "Remove item from order (only when PENDING)")
     @DeleteMapping("/{orderId}/items/{itemId}")
+    @PreAuthorize("hasAnyRole('WAITER','MANAGER')")
     public ResponseEntity<Order> removeItem(@PathVariable Long orderId, @PathVariable Long itemId) {
         return ResponseEntity.ok(orderService.removeItem(orderId, itemId));
     }

@@ -1,6 +1,7 @@
 package com.biteplate.domain.factory;
 
 import com.biteplate.domain.menu.MenuItem;
+import com.biteplate.exception.BadRequestException;
 
 import java.math.BigDecimal;
 
@@ -36,7 +37,7 @@ public abstract class MenuItemFactory {
             case "MAIN_COURSE" -> new MainCourseFactory();
             case "DESSERT"     -> new DessertFactory();
             case "BEVERAGE"    -> new BeverageFactory();
-            default -> throw new IllegalArgumentException("Unknown menu item category: " + category);
+            default -> throw new BadRequestException("Unknown menu item category: " + category);
         };
     }
 }

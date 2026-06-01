@@ -42,7 +42,8 @@ public class StaffService {
                 "id", staff.getId(),
                 "name", staff.getName(),
                 "username", staff.getUsername(),
-                "role", staff.getRole()
+                "role", staff.getRole(),
+                "active", staff.isActive()
             )
         );
     }

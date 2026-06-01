@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import com.biteplate.exception.BadRequestException;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.time.LocalDateTime;
@@ -46,8 +47,8 @@ public class Reservation {
 
     public Reservation(RestaurantTable table, String customerName, String customerPhone,
                        int partySize, LocalDateTime reservationTime) {
-        if (partySize <= 0) throw new IllegalArgumentException("Party size must be positive");
-        if (reservationTime.isBefore(LocalDateTime.now())) throw new IllegalArgumentException("Reservation must be in the future");
+        if (partySize <= 0) throw new BadRequestException("Party size must be positive");
+        if (reservationTime.isBefore(LocalDateTime.now())) throw new BadRequestException("Reservation must be in the future");
         this.table = table;
         this.customerName = customerName;
         this.customerPhone = customerPhone;

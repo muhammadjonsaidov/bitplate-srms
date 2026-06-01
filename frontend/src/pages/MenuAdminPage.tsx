@@ -7,10 +7,10 @@ import { Plus, Eye, EyeOff, BookOpen, Search, Trash2 } from 'lucide-react'
 import clsx from 'clsx'
 
 const CATEGORIES = [
-  { value: 'STARTER',     label: 'Starter' },
-  { value: 'MAIN_COURSE', label: 'Main Course' },
-  { value: 'DESSERT',     label: 'Dessert' },
-  { value: 'BEVERAGE',    label: 'Beverage' },
+  { value: 'Starter',     label: 'Starter'     },
+  { value: 'Main_Course', label: 'Main Course' },
+  { value: 'Dessert',     label: 'Dessert'     },
+  { value: 'Beverage',    label: 'Beverage'    },
 ]
 
 export default function MenuAdminPage() {
@@ -18,7 +18,7 @@ export default function MenuAdminPage() {
   const [showForm, setShowForm] = useState(false)
   const [search, setSearch] = useState('')
   const [form, setForm] = useState({
-    category: 'STARTER',
+    category: 'Starter',
     name: '',
     description: '',
     price: '',
@@ -34,7 +34,7 @@ export default function MenuAdminPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['menu'] })
       setShowForm(false)
-      setForm({ category: 'STARTER', name: '', description: '', price: '' })
+      setForm({ category: 'Starter', name: '', description: '', price: '' })
       toast.success('Menu item created (Factory Method)')
     },
     onError: () => toast.error('Failed to create item'),
@@ -65,7 +65,7 @@ export default function MenuAdminPage() {
       return
     }
     create.mutate({
-      category: form.category, // backend does toUpperCase(), MAIN_COURSE ✓
+      category: form.category,
       name: form.name,
       description: form.description,
       price: parseFloat(form.price),

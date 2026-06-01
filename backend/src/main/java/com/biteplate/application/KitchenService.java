@@ -25,6 +25,7 @@ public class KitchenService {
     private final ManagerDashboard managerDashboard;
     private final KitchenDisplayObserver kitchenDisplayObserver;
 
+    @Transactional(readOnly = true)
     public List<Order> getQueue() {
         return orderRepository.findActiveOrders();
     }

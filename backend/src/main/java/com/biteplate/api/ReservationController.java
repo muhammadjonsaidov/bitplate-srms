@@ -12,6 +12,7 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,45 +30,45 @@ public class ReservationController {
     @Operation(summary = "Get all reservations")
     @GetMapping
     @PreAuthorize("hasAnyRole('WAITER','MANAGER')")
-    public List<Reservation> getAll() {
-        return reservationService.getAll();
+    public ResponseEntity<List<Reservation>> getAll() {
+        return ResponseEntity.ok(reservationService.getAll());
     }
 
     @Operation(summary = "Get reservations by date range")
     @GetMapping("/range")
     @PreAuthorize("hasAnyRole('WAITER','MANAGER')")
-    public List<Reservation> getByRange(
+    public ResponseEntity<List<Reservation>> getByRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
-        return reservationService.getByDateRange(from, to);
+        return ResponseEntity.ok(reservationService.getByDateRange(from, to));
     }
 
     @Operation(summary = "Create a reservation (State Pattern: FREE → RESERVED)")
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('WAITER','MANAGER')")
-    public Reservation create(@Valid @RequestBody CreateReservationRequest req) {
-        return reservationService.createReservation(
+    public ResponseEntity<Reservation> create(@Valid @RequestBody CreateReservationRequest req) {
+        Reservation reservation = reservationService.createReservation(
                 req.getTableId(),
                 req.getCustomerName(),
                 req.getCustomerPhone(),
                 req.getPartySize(),
                 req.getScheduledAt());
+        return ResponseEntity.status(HttpStatus.CREATED).body(reservation);
     }
 
     @Operation(summary = "Customer arrives — check in (State Pattern: RESERVED → OCCUPIED)")
     @PutMapping("/{id}/check-in")
     @PreAuthorize("hasAnyRole('WAITER','MANAGER')")
-    public Reservation checkIn(@PathVariable Long id) {
-        return reservationService.checkIn(id);
+    public ResponseEntity<Reservation> checkIn(@PathVariable Long id) {
+        return ResponseEntity.ok(reservationService.checkIn(id));
     }
 
     @Operation(summary = "Cancel reservation (State Pattern: RESERVED → FREE)")
     @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAnyRole('WAITER','MANAGER')")
-    public void cancel(@PathVariable Long id) {
+    public ResponseEntity<Void> cancel(@PathVariable Long id) {
         reservationService.cancelReservation(id);
+        return ResponseEntity.noContent().build();
     }
 
     // ─── Inner DTO ───────────────────────────────────────────────────────────
