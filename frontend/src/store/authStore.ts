@@ -16,8 +16,10 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       staff: null,
       isAuthenticated: false,
-      setAuth: (accessToken, staff) => set({ accessToken, staff, isAuthenticated: true }),
-      clearAuth: () => set({ accessToken: null, staff: null, isAuthenticated: false }),
+      setAuth: (accessToken, staff) =>
+        set({ accessToken, staff, isAuthenticated: true }),
+      clearAuth: () =>
+        set({ accessToken: null, staff: null, isAuthenticated: false }),
     }),
     {
       name: 'biteplate-auth',

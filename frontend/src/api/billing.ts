@@ -1,17 +1,17 @@
-import { apiClient } from './client'
-import { Bill } from '../types'
+import { api } from './client'
+import { Bill, PricingStrategy } from '../types'
 
-export const generateBill = async (orderId: number, strategy = 'STANDARD'): Promise<Bill> =>
-  (await apiClient.post<Bill>(`/billing/generate/${orderId}`, null, { params: { strategy } })).data
-
-export const getBillForOrder = async (orderId: number): Promise<Bill> =>
-  (await apiClient.get<Bill>(`/billing/order/${orderId}`)).data
+export const generateBill = async (orderId: number, strategy: PricingStrategy = 'STANDARD'): Promise<Bill> =>
+  (await api.post<Bill>(`/billing/generate/${orderId}?strategy=${strategy}`)).data
 
 export const applyTip = async (billId: number, tip: number): Promise<Bill> =>
-  (await apiClient.put<Bill>(`/billing/${billId}/tip`, null, { params: { tip } })).data
+  (await api.put<Bill>(`/billing/${billId}/tip?tip=${tip}`)).data
 
 export const splitBill = async (billId: number, guests: number): Promise<Bill> =>
-  (await apiClient.put<Bill>(`/billing/${billId}/split`, null, { params: { guests } })).data
+  (await api.put<Bill>(`/billing/${billId}/split?guests=${guests}`)).data
 
 export const markBillPaid = async (billId: number): Promise<Bill> =>
-  (await apiClient.put<Bill>(`/billing/${billId}/pay`)).data
+  (await api.put<Bill>(`/billing/${billId}/pay`)).data
+
+export const getBillForOrder = async (orderId: number): Promise<Bill> =>
+  (await api.get<Bill>(`/billing/order/${orderId}`)).data
