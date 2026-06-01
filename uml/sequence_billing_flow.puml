@@ -1,0 +1,182 @@
+@startuml BitePlate_SequenceDiagram_BillingFlow
+title BitePlate SRMS — Billing Sequence Diagram\n(Command → Strategy → Singleton Coherent Flow)
+
+scale 2800 width
+
+skinparam backgroundColor #FFFFFF
+skinparam sequenceArrowThickness 2
+skinparam sequenceParticipantBorderThickness 2
+skinparam sequenceParticipantBorderColor #444444
+skinparam sequenceParticipantBackgroundColor #FFFFFF
+skinparam sequenceArrowColor #444444
+skinparam sequenceLifeLineBorderColor #888888
+skinparam sequenceLifeLineBorderThickness 1.5
+skinparam responseMessageBelowArrow true
+skinparam sequenceFontSize 16
+skinparam sequenceMessageAlign center
+skinparam noteFontSize 14
+skinparam noteBackgroundColor #FFFBE6
+skinparam noteBorderColor #888888
+skinparam defaultFontName Arial
+skinparam defaultFontSize 16
+skinparam padding 8
+
+' ─────────────────────────────────────────────────────
+' PARTICIPANTS
+' UML stereotyped lifelines for clarity:
+'   boundary  = system boundary / controller
+'   control   = service / coordinator
+'   entity    = domain object / data holder
+' ─────────────────────────────────────────────────────
+actor       "Cashier"                           as CSH
+boundary    "BillingController"                 as CTRL
+control     "BillingService"                    as SVC
+entity      "Order\n<<ConcreteSubject>>"        as ORD
+control     "KitchenQueue\n<<Invoker>>"         as KQ
+entity      "ServeOrderCommand\n<<Command>>"    as CMD
+entity      "WaiterNotifier\n<<Observer>>"      as WN
+control     "BillingFacade\n<<Facade>>"         as FAC
+entity      "HappyHourPricingStrategy\n<<Strategy>>" as PS
+entity      "TaxCalculator"                     as TAX
+entity      "OrderHistoryLog\n<<Singleton>>"    as LOG
+
+' ─────────────────────────────────────────────────────
+' FLOW START
+' ─────────────────────────────────────────────────────
+CSH -> CTRL : POST /api/billing/generate/{orderId}\n        ?strategy=HAPPY_HOUR
+
+activate CTRL
+CTRL -> SVC : generateBill(orderId, "HAPPY_HOUR")
+activate SVC
+
+SVC -> SVC : order = orderRepository.findById(orderId)
+
+' ─────────────────────────────────────────────────────
+' Guard checks — combined fragment: alt
+' ─────────────────────────────────────────────────────
+alt [order.status == CANCELLED]
+  SVC --> CTRL : throw BadRequestException\n"Cannot generate bill for a cancelled order"
+  CTRL --> CSH  : 400 Bad Request
+
+else [order.status != SERVED]
+
+  note over SVC, ORD #DDEEFF
+    ① COMMAND PATTERN
+    BillingService (client) creates ServeOrderCommand and hands it
+    to KitchenQueue (invoker). KitchenQueue calls execute() without
+    knowing what the command does. previousStatus is saved inside
+    the command before the transition — enabling undo().
+  end note
+
+  SVC -> ORD : addObserver(waiterNotifier)
+  SVC -> ORD : addObserver(managerDashboard)
+  SVC -> ORD : addObserver(kitchenDisplayObserver)
+
+  SVC -> KQ : execute(new ServeOrderCommand(order))
+  activate KQ
+
+  create CMD
+  KQ -> CMD : <<create>> ServeOrderCommand(order)
+  activate CMD
+  note right of CMD
+    previousStatus = order.getStatus()
+    stored before transition
+  end note
+
+  CMD -> ORD : updateStatus(SERVED)
+  activate ORD
+
+  ORD -> ORD : status = SERVED\nupdatedAt = now()
+
+  ORD -> WN  : onOrderStatusChanged(order, SERVED)
+  activate WN
+  WN -> WN   : redisPublisher.publish(\n  "notifications:waiter", message)
+  WN --> ORD : void
+  deactivate WN
+
+  deactivate ORD
+  CMD --> KQ : void
+  deactivate CMD
+
+  KQ -> KQ   : commandHistory.push(cmd)
+  KQ --> SVC : void
+  deactivate KQ
+
+  SVC -> SVC : orderRepository.save(order)
+
+end
+
+' ─────────────────────────────────────────────────────
+' ② STRATEGY PATTERN
+' ─────────────────────────────────────────────────────
+note over SVC, PS #DDFFDD
+  ② STRATEGY PATTERN
+  BillingService selects the pricing algorithm at runtime based on the
+  query parameter. BillingFacade only depends on PricingStrategy interface
+  — the concrete strategy swaps without changing any facade code.
+end note
+
+SVC -> SVC : strategy = selectStrategy("HAPPY_HOUR")\n→ HappyHourPricingStrategy
+
+SVC -> FAC : generateBill(order, happyHourPricingStrategy)
+activate FAC
+
+FAC -> PS  : calculateTotal(order)
+activate PS
+note right of PS
+  subtotal = order.calculateSubtotal()\n× 0.80  (20% Happy Hour discount)
+end note
+PS --> FAC : subtotal : BigDecimal
+deactivate PS
+
+FAC -> TAX : calculateTax(subtotal)
+activate TAX
+note right of TAX
+  tax = subtotal × 0.20  (VAT 20%)
+end note
+TAX --> FAC : tax : BigDecimal
+deactivate TAX
+
+FAC -> FAC : total = subtotal + tax\nbuild Bill + BillLineItems\nbillRepository.save(bill)
+
+' ─────────────────────────────────────────────────────
+' ③ SINGLETON PATTERN
+' ─────────────────────────────────────────────────────
+note over FAC, LOG #FFF3CD
+  ③ SINGLETON PATTERN
+  Exactly one OrderHistoryLog instance exists across all subsystems.
+  getInstance() uses double-checked locking (volatile + synchronized)
+  to guarantee a single instance even under concurrent requests.
+end note
+
+FAC -> LOG : getInstance()
+activate LOG
+note right of LOG
+  if (instance == null) {
+    synchronized (OrderHistoryLog.class) {
+      if (instance == null)
+        instance = new OrderHistoryLog()
+    }
+  }
+  return instance
+end note
+LOG --> FAC : OrderHistoryLog instance
+
+FAC -> LOG : append(new OrderRecord(...))
+note right of LOG
+  records.add(record)  ← CopyOnWriteArrayList (thread-safe)
+  historyRepository.save(record)  ← PostgreSQL DB
+end note
+LOG --> FAC : void
+deactivate LOG
+
+FAC --> SVC : Bill
+deactivate FAC
+
+SVC --> CTRL : Bill
+deactivate SVC
+
+CTRL --> CSH : 201 Created\n{ bill JSON }
+deactivate CTRL
+
+@enduml

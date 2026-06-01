@@ -1,91 +1,94 @@
 @startuml BitePlate_UseCaseDiagram
-title BitePlate SRMS — System Use Case Diagram
+title BitePlate SRMS — Use Case Diagram
 
 skinparam backgroundColor #FAFAFA
 skinparam actorStyle awesome
 skinparam usecaseFontSize 11
 skinparam packageStyle rectangle
 skinparam usecaseBorderThickness 1.5
+skinparam arrowThickness 1.2
 
 ' ─────────────────────────
-' ACTORS
+' ACTORS (outside boundary)
 ' ─────────────────────────
-actor Waiter       as W
+actor "Waiter"     as W
 actor "Head Chef"  as HC
-actor Cashier      as C
-actor Manager      as M
+actor "Cashier"    as C
+actor "Manager"    as M
 
-' Manager inherits from all roles
-M --|> W  : generalises
-M --|> HC : generalises
-M --|> C  : generalises
+' Manager generalises all three roles (inherits their use cases)
+M --|> W
+M --|> HC
+M --|> C
 
 ' ─────────────────────────
 ' SYSTEM BOUNDARY
 ' ─────────────────────────
 rectangle "BitePlate SRMS" {
 
-  ' ── TABLE MANAGEMENT ──────────────────
+  ' ── TABLE MANAGEMENT ──────────────────────────────
   package "Table Management" {
-    usecase "View Table Status Board"  as UC_T1
-    usecase "Seat Customer"            as UC_T2
-    usecase "Mark Table Awaiting Bill" as UC_T3
-    usecase "Clear Table"              as UC_T4
-    usecase "Make Reservation"         as UC_T5
-    usecase "Cancel Reservation"       as UC_T6
+    usecase "View Table Status"         as UC_T1
+    usecase "Seat Customer"             as UC_T2
+    usecase "Make Reservation"          as UC_T3
+    usecase "Cancel Reservation"        as UC_T4
+    usecase "Mark Table Awaiting Bill"  as UC_T5
+    usecase "Clear Table"               as UC_T6
   }
 
-  ' ── ORDER MANAGEMENT ──────────────────
+  ' ── ORDER MANAGEMENT ──────────────────────────────
   package "Order Management" {
-    usecase "Create Order"          as UC_O1
-    usecase "Add Item to Order"     as UC_O2
-    usecase "Remove Item from Order" as UC_O3
-    usecase "Submit Order to Kitchen" as UC_O4
-    usecase "View Order Status"     as UC_O5
-    usecase "Apply Allergen Flag"   as UC_O6
-    usecase "Apply Meal Customisation" as UC_O7
+    usecase "Create Order"              as UC_O1
+    usecase "Add Item to Order"         as UC_O2
+    usecase "Remove Item from Order"    as UC_O3
+    usecase "Submit Order to Kitchen"   as UC_O4
+    usecase "View Order Status"         as UC_O5
+    usecase "Apply Allergen Flag"       as UC_O6
+    usecase "Apply Customisation"       as UC_O7
   }
 
-  ' ── KITCHEN QUEUE ─────────────────────
-  package "Kitchen Queue" {
-    usecase "View Kitchen Queue"     as UC_K1
-    usecase "Mark Order Preparing"   as UC_K2
-    usecase "Mark Order Ready"       as UC_K3
-    usecase "Cancel Order"           as UC_K4
-    usecase "Undo Last Action"       as UC_K5
+  ' ── KITCHEN MANAGEMENT ────────────────────────────
+  package "Kitchen Management" {
+    usecase "View Kitchen Queue"        as UC_K1
+    usecase "Mark Order Preparing"      as UC_K2
+    usecase "Mark Order Ready"          as UC_K3
+    usecase "Cancel Order"              as UC_K4
+    usecase "Undo Last Action"          as UC_K5
   }
 
-  ' ── BILLING & POS ─────────────────────
+  ' ── BILLING & POS ─────────────────────────────────
   package "Billing & POS" {
-    usecase "Generate Bill"          as UC_B1
-    usecase "Apply Pricing Strategy" as UC_B2
-    usecase "Add Tip"                as UC_B3
-    usecase "Split Bill"             as UC_B4
-    usecase "Mark Bill Paid"         as UC_B5
+    usecase "Generate Bill"             as UC_B1
+    usecase "Apply Pricing Strategy"    as UC_B2
+    usecase "Add Tip"                   as UC_B3
+    usecase "Split Bill"                as UC_B4
+    usecase "Mark Bill Paid"            as UC_B5
   }
 
-  ' ── MENU ADMINISTRATION ───────────────
+  ' ── MENU ADMINISTRATION ───────────────────────────
   package "Menu Administration" {
-    usecase "View Menu"              as UC_M1
-    usecase "Add Menu Item"          as UC_M2
-    usecase "Toggle Item Availability" as UC_M3
-    usecase "Delete Menu Item"       as UC_M4
+    usecase "View Menu"                 as UC_M1
+    usecase "Add Menu Item"             as UC_M2
+    usecase "Toggle Item Availability"  as UC_M3
+    usecase "Delete Menu Item"          as UC_M4
   }
 
-  ' ── REPORTS ───────────────────────────
+  ' ── REPORTS & HISTORY ─────────────────────────────
   package "Reports & History" {
-    usecase "View Order History"     as UC_R1
-    usecase "Query by Date Range"    as UC_R2
-    usecase "Query by Table"         as UC_R3
-    usecase "View Most Ordered Item" as UC_R4
+    usecase "View Order History"        as UC_R1
+    usecase "Filter by Date Range"      as UC_R2
+    usecase "Filter by Table"           as UC_R3
+    usecase "View Most Ordered Item"    as UC_R4
   }
 
   ' ─────────────────────────
-  ' INCLUDE RELATIONSHIPS
+  ' <<include>> RELATIONSHIPS
+  ' Arrow points FROM including UC → TO the included UC
+  ' (the base always executes the included behaviour)
   ' ─────────────────────────
-  UC_O4 ..> UC_O1 : <<include>>
   UC_O2 ..> UC_O1 : <<include>>
   UC_O3 ..> UC_O1 : <<include>>
+  UC_O4 ..> UC_O1 : <<include>>
 
   UC_B1 ..> UC_B2 : <<include>>
 
@@ -94,12 +97,14 @@ rectangle "BitePlate SRMS" {
   UC_R4 ..> UC_R1 : <<include>>
 
   ' ─────────────────────────
-  ' EXTEND RELATIONSHIPS
+  ' <<extend>> RELATIONSHIPS
+  ' Arrow points FROM extending UC → TO the base UC
+  ' (extension adds optional behaviour at an extension point)
   ' ─────────────────────────
   UC_O6 ..> UC_O2 : <<extend>>\n[allergen detected]
   UC_O7 ..> UC_O2 : <<extend>>\n[customisation requested]
 
-  UC_B3 ..> UC_B1 : <<extend>>\n[tip added]
+  UC_B3 ..> UC_B1 : <<extend>>\n[tip applied]
   UC_B4 ..> UC_B1 : <<extend>>\n[split requested]
 
   UC_K5 ..> UC_K2 : <<extend>>\n[undo requested]
@@ -137,14 +142,14 @@ HC -- UC_M3
 
 ' Cashier
 C -- UC_B1
-C -- UC_B2
 C -- UC_B3
 C -- UC_B4
 C -- UC_B5
 C -- UC_O5
 C -- UC_T1
 
-' Manager (inherits all above; exclusive use cases below)
+' Manager — exclusive use cases
+' (all other use cases inherited via generalisation above)
 M -- UC_M4
 M -- UC_R1
 M -- UC_R2

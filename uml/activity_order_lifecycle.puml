@@ -1,183 +1,184 @@
-@startuml BitePlate_Activity_OrderLifecycle
+@startuml BitePlate_ActivityDiagram_OrderLifecycle
 title BitePlate SRMS — Full Order Lifecycle Activity Diagram
 
-skinparam backgroundColor #FAFAFA
-skinparam activityArrowThickness 1.5
-skinparam activityFontSize 11
-skinparam swimlaneBorderThickness 2
+!pragma useVerticalIf on
 
-|#DDEEFF| Waiter |
-|#DDFFDD| Kitchen (Head Chef) |
-|#FFF8DC| System |
-|#FFE4E1| Cashier |
+scale 2800 width
+
+<style>
+activityDiagram {
+  FontSize 20
+  FontName Arial
+  BackgroundColor #FFFFFF
+  BorderColor #444444
+  BorderThickness 2
+  ArrowThickness 2
+  Padding 20
+}
+diamond {
+  FontSize 18
+  BackgroundColor #FFFFFF
+  BorderColor #444444
+}
+note {
+  FontSize 16
+  BackgroundColor #FFFBE6
+  BorderColor #888888
+}
+</style>
+
+skinparam swimlaneBorderThickness 2
+skinparam swimlaneBorderColor #888888
+skinparam swimlaneFontSize 26
+skinparam swimlaneFontStyle bold
+skinparam swimlaneBackgroundColor #FFFFFF
+skinparam conditionStyle diamond
+
+|Waiter|
+|Kitchen (Head Chef)|
+|System|
+|Cashier|
+|Manager|
 
 |Waiter|
 start
 
-:Select available table;
-note right
-  GET /api/tables
-  status = FREE
-end note
+:View available tables;
 
 :Seat customer;
-note right
-  PUT /api/tables/{id}/occupy
-  TableState: FREE → OCCUPIED
-end note
+note right: STATE: FreeState -> OccupiedState
 
-:Create new order\nPOST /api/orders;
+:Create new order;
 
 |System|
-:Register observers on Order\n(WaiterNotifier, ManagerDashboard,\nKitchenDisplayObserver);
+:Register observers on Order;
+note right: OBSERVER: WaiterNotifier, ManagerDashboard, KitchenDisplayObserver
 
 |Waiter|
-:Search menu;
+:Browse menu;
 
 repeat
   :Select menu item;
+  note right: FACTORY METHOD: MenuItemFactory.forCategory()
 
-  |System|
-  :MenuItemFactory.forCategory(category)\n→ StarterFactory / MainCourseFactory\n/ DessertFactory / BeverageFactory;
-
-  if (Item has allergens?) then (yes)
+  if (Allergens?) then (yes)
     :Wrap with AllergenFlagDecorator;
-    note right
-      DECORATOR PATTERN
-      Dynamically attaches
-      allergen warning to item
-    end note
+    note right: DECORATOR: allergen warning attached
   else (no)
   endif
 
-  :Add OrderItem to Order\nPOST /api/orders/{id}/items;
-
-  |Waiter|
-  if (Add another item?) then (yes)
+  if (Special prep?) then (yes)
+    :Wrap with SpecialPrepDecorator;
   else (no)
   endif
 
-repeat while (Adding items?) is (yes)
-→ (no)
+  :Add item to order;
+repeat while (More items?) is (yes) not (no)
 
-:Submit order to kitchen\nPOST /api/orders/{id}/submit;
+:Submit order to kitchen;
 
 |System|
-:KitchenQueue.execute(\n  new PrepareOrderCommand(order));
-note right
-  COMMAND PATTERN (Invoker)
-  Stores command in Deque history
-  for undo support
-end note
+:KitchenQueue.execute(PrepareOrderCommand);
+note right: COMMAND: stored in Deque, enables undo()
 
-:PrepareOrderCommand.execute()\n→ order.updateStatus(PREPARING);
-
-:order.notifyObservers(PREPARING);
-
-fork
-  :WaiterNotifier → Redis Pub/Sub\nchannel: notifications:waiter;
-fork again
-  :ManagerDashboard → Redis Pub/Sub\nchannel: notifications:manager;
-fork again
-  :KitchenDisplayObserver → Redis Pub/Sub\nchannel: notifications:kitchen;
-end fork
-note right
-  OBSERVER PATTERN
-  All three observers notified
-  concurrently via Redis Pub/Sub
-end note
+:order.updateStatus(PREPARING) + notifyObservers();
+note right: OBSERVER: -> Redis notifications:waiter / :manager / :kitchen
 
 |Kitchen (Head Chef)|
-:View kitchen queue\nGET /api/kitchen/queue;
+:View kitchen queue;
 
-if (Undo needed?) then (yes)
-  :POST /api/kitchen/undo;
-  note left
-    KitchenQueue.undoLastWithReload()
-    Reverts to previousStatus
-  end note
+if (Undo?) then (yes)
+  :KitchenQueue.undoLastWithReload();
 else (no)
 endif
 
 :Cook food;
 
-:Mark order ready\nPUT /api/kitchen/{id}/ready;
+:Mark order ready;
 
 |System|
-:KitchenQueue.execute(\n  new ExpediteOrderCommand(order));
-:order.updateStatus(READY);
-:order.notifyObservers(READY);
+:KitchenQueue.execute(ExpediteOrderCommand);
+
+:order.updateStatus(READY) + notifyObservers();
 
 |Waiter|
 :Receive READY notification;
-:Deliver food to table;
 
-:Request bill\n(Mark table AWAITING_BILL);
-note right
-  PUT /api/tables/{id}/await-bill
-  TableState: OCCUPIED → AWAITING_BILL
-end note
+:Deliver food and mark table awaiting bill;
+note right: STATE: OccupiedState -> AwaitingBillState
 
 |Cashier|
-:Select table from billing screen\nGET /api/billing/order/{orderId};
-
-if (Generate bill) then (select strategy)
-  if (Time 15:00–17:00 or AUTO?) then (Happy Hour)
-    :strategy = HappyHourPricingStrategy\n(20% discount);
-  elseif (Loyalty card?) then (Loyalty)
-    :strategy = LoyaltyCardPricingStrategy\n(10% off + £3 credit);
-  else (Standard)
-    :strategy = StandardPricingStrategy;
-  endif
+if (Pricing strategy?) then (Happy Hour)
+  :HappyHourPricingStrategy;
+  note right: 20% discount
+elseif (Loyalty card?) then (Loyalty Card)
+  :LoyaltyCardPricingStrategy;
+  note right: 10% off + 3 credit
+else (Standard)
+  :StandardPricingStrategy;
 endif
 
 |System|
-:BillingService.generateBill(orderId, strategy);
+:KitchenQueue.execute(ServeOrderCommand);
+note right: COMMAND 1: order.updateStatus(SERVED)
 
-note right
-  THREE-PATTERN COHERENT FLOW
-  starts here:
-end note
+:strategy.calculateTotal() + TaxCalculator.calculateTax();
+note right: STRATEGY 2: algorithm swapped at runtime
 
-:COMMAND: KitchenQueue.execute(\n  new ServeOrderCommand(order))\n→ order.updateStatus(SERVED);
+:Build Bill; billRepository.save();
 
-:STRATEGY: strategy.calculateTotal(order)\n→ subtotal;
-
-:BillingFacade.generateBill(order, strategy);
-:TaxCalculator.calculateTax(subtotal)\n→ tax (VAT 20%);
-:Build Bill + BillLineItems;
-:billRepository.save(bill);
-
-:SINGLETON: OrderHistoryLog.getInstance()\n.append(orderRecord);
-note right
-  Record persisted to DB
-  AND in-memory log updated
-end note
+:OrderHistoryLog.getInstance().append(record);
+note right: SINGLETON 3: double-checked locking, CopyOnWriteArrayList
 
 |Cashier|
-:Present bill to customer;
-
-if (Apply tip?) then (yes)
-  :PUT /api/billing/{id}/tip?tip=X;
+if (Tip?) then (yes)
+  :Apply tip;
 else (no)
 endif
 
-if (Split bill?) then (yes)
-  :PUT /api/billing/{id}/split?guests=N;
-  note right
-    SplitBillService.calculatePerGuest()
-  end note
+if (Split?) then (yes)
+  :Split bill;
 else (no)
 endif
 
 :Process payment;
-:PUT /api/billing/{id}/pay;
 
 |Waiter|
-:Clear table\nPUT /api/tables/{id}/clear;
-note right
-  TableState: AWAITING_BILL → CLEARED → FREE
-end note
+:Clear table;
+note right: STATE: AwaitingBillState -> ClearedState -> FreeState
+
+|Manager|
+:Request order history;
+
+|System|
+:OrderHistoryLog.getInstance();
+note right: SINGLETON: same instance
+
+:iterator = instance.iterator();
+note right: ITERATOR: OrderHistoryIterator with snapshot copy
+
+repeat
+  :record = iterator.next(); add to list;
+repeat while (iterator.hasNext()?) is (yes) not (no)
+
+:Return List<OrderRecord>;
+
+|Manager|
+if (Date filter?) then (yes)
+  :Filter by date range;
+else (no)
+endif
+
+if (Table filter?) then (yes)
+  :Filter by table;
+else (no)
+endif
+
+if (Most ordered?) then (yes)
+  :getMostFrequentlyOrderedItem();
+  note right: ITERATOR: traverses records, returns max count
+else (no)
+endif
 
 stop
 
