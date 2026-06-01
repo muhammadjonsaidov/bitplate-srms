@@ -12,6 +12,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByStatus(OrderStatus status);
     List<Order> findByStaffId(Long staffId);
 
-    @Query("SELECT o FROM Order o WHERE o.status IN ('PENDING','PREPARING') ORDER BY o.createdAt ASC")
+    @Query("SELECT o FROM Order o WHERE o.status IN ('PENDING','PREPARING','READY') ORDER BY o.createdAt ASC")
     List<Order> findActiveOrders();
 }

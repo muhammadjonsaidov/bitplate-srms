@@ -3,6 +3,7 @@ package com.biteplate.domain.kitchen;
 import com.biteplate.domain.order.Order;
 import com.biteplate.domain.order.OrderStatus;
 import lombok.RequiredArgsConstructor;
+import lombok.Getter;
 
 /**
  * COMMAND PATTERN — ConcreteCommand.
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
  * Marks an order as READY immediately (expedited by head chef).
  * undo() reverts back to PREPARING.
  */
+@Getter
 @RequiredArgsConstructor
 public class ExpediteOrderCommand implements KitchenCommand {
 

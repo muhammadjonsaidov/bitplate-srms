@@ -52,13 +52,13 @@ public class KitchenService {
 
     @Transactional
     public Optional<String> undoLastAction() {
-        return kitchenQueue.undoLast();
+        return kitchenQueue.undoLastWithReload(orderRepository);
     }
 
     @Transactional
     public Order markServed(Long orderId) {
         Order order = loadWithObservers(orderId);
-        order.updateStatus(OrderStatus.SERVED);
+        kitchenQueue.execute(new ServeOrderCommand(order));
         return orderRepository.save(order);
     }
 

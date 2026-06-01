@@ -3,6 +3,7 @@ package com.biteplate.domain.kitchen;
 import com.biteplate.domain.order.Order;
 import com.biteplate.domain.order.OrderStatus;
 import lombok.RequiredArgsConstructor;
+import lombok.Getter;
 
 /**
  * COMMAND PATTERN — ConcreteCommand.
@@ -11,6 +12,7 @@ import lombok.RequiredArgsConstructor;
  * execute() → sets order to PREPARING.
  * undo()    → reverts to PENDING (only valid before cooking completes).
  */
+@Getter
 @RequiredArgsConstructor
 public class PrepareOrderCommand implements KitchenCommand {
 

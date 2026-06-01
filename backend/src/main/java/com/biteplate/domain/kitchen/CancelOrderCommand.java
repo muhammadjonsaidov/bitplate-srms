@@ -3,6 +3,7 @@ package com.biteplate.domain.kitchen;
 import com.biteplate.domain.order.Order;
 import com.biteplate.domain.order.OrderStatus;
 import lombok.RequiredArgsConstructor;
+import lombok.Getter;
 
 /**
  * COMMAND PATTERN — ConcreteCommand.
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
  * Encapsulates the "cancel an order" kitchen action.
  * undo() restores previous status (if cancellation was a mistake).
  */
+@Getter
 @RequiredArgsConstructor
 public class CancelOrderCommand implements KitchenCommand {
 

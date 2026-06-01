@@ -41,14 +41,27 @@ public class KitchenQueue {
     }
 
     /**
-     * Undo the most recent command.
+     * Undo with reload — reloads the order from DB so changes are persisted.
      */
-    public Optional<String> undoLast() {
+    public Optional<String> undoLastWithReload(
+            com.biteplate.infrastructure.persistence.OrderRepository orderRepository) {
         if (commandHistory.isEmpty()) {
             return Optional.empty();
         }
         KitchenCommand last = commandHistory.pop();
         last.undo();
+
+        // Re-save the order so the undo is persisted to DB
+        if (last instanceof PrepareOrderCommand cmd) {
+            orderRepository.save(cmd.getOrder());
+        } else if (last instanceof ExpediteOrderCommand cmd) {
+            orderRepository.save(cmd.getOrder());
+        } else if (last instanceof CancelOrderCommand cmd) {
+            orderRepository.save(cmd.getOrder());
+        } else if (last instanceof ServeOrderCommand cmd) {
+            orderRepository.save(cmd.getOrder());
+        }
+
         redisAdapter.popCommand();
         log.info("Kitchen command undone: {}", last.getDescription());
         return Optional.of("Undone: " + last.getDescription());
