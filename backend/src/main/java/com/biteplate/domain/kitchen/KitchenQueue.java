@@ -60,6 +60,9 @@ public class KitchenQueue {
             orderRepository.save(cmd.getOrder());
         } else if (last instanceof ServeOrderCommand cmd) {
             orderRepository.save(cmd.getOrder());
+        } else {
+            log.warn("Undo executed for unknown command type '{}' — order not re-saved to DB",
+                last.getClass().getSimpleName());
         }
 
         redisAdapter.popCommand();

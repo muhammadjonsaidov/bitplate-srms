@@ -35,6 +35,12 @@
 
 ---
 
+## Language & IDE Choice
+
+Java 21 was chosen as the implementation language because its object-oriented model maps directly onto the design patterns used throughout this system — sealed interfaces simplify exhaustive pattern matching in the State transitions, records reduce boilerplate in value objects like `OrderRecord`, and virtual threads (Project Loom) make Redis Pub/Sub notification handlers non-blocking without reactive overhead. Spring Boot 3.3 was selected because its dependency-injection container handles Singleton lifecycle management at the framework level, Spring Security integrates cleanly with JWT and role-based method guards, and SpringDoc generates live API documentation from annotations rather than maintaining a separate spec. PostgreSQL with Flyway was preferred over an in-memory database because schema migrations are versioned alongside the code, which keeps the domain model evolution auditable. TypeScript with React 18 and Vite was chosen for the frontend because strict typing catches API contract mismatches at compile time, and Vite's HMR keeps the development loop fast without a separate bundler configuration. IntelliJ IDEA Ultimate was used as the primary IDE: its Spring facet provides run configurations and bean wiring graphs out of the box, the built-in database client connects directly to the Dockerised PostgreSQL instance, and the PlantUML plugin renders UML source files in-editor so diagrams stay in sync with code changes without a separate tool.
+
+---
+
 ## Design Patterns
 
 | # | Pattern | Category | Implementation |
@@ -122,10 +128,11 @@ npm run dev
 
 | Username | Password | Role |
 |---|---|---|
-| `john.waiter` | `waiter123` | WAITER |
-| `sarah.chef` | `chef123` | CHEF |
-| `mike.cashier` | `cashier123` | CASHIER |
-| `emma.manager` | `manager123` | MANAGER |
+| `manager` | `manager123` | MANAGER |
+| `chef1` | `chef123` | HEAD_CHEF |
+| `waiter1` | `waiter123` | WAITER |
+| `waiter2` | `waiter123` | WAITER |
+| `cashier1` | `cashier123` | CASHIER |
 
 > Seeded by `V2__seed_data.sql` — dev/demo only.
 

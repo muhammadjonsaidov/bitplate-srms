@@ -104,6 +104,11 @@ public class BillingFacade {
         );
 
         historyRepository.save(record);
-        OrderHistoryLog.getInstance().append(record);
+        try {
+            OrderHistoryLog.getInstance().append(record);
+        } catch (Exception e) {
+            log.warn("In-memory OrderHistoryLog sync failed for order {} — DB record persisted, cache will resync on next query",
+                order.getId(), e);
+        }
     }
 }
