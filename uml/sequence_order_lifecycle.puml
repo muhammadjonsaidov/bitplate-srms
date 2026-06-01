@@ -1,91 +1,152 @@
-@startuml BitePlate_Sequence_OrderLifecycle
-title BitePlate SRMS — Complete Order Lifecycle (Sequence Diagram)
+@startuml BitePlate_Sequence_ThreePatternFlow
+title BitePlate SRMS — Three-Pattern Coherent Flow\n(Command → Strategy → Singleton)\nSequence Diagram
 
-skinparam backgroundColor white
-skinparam sequenceArrowThickness 2
+skinparam backgroundColor #FAFAFA
+skinparam sequenceArrowThickness 1.5
+skinparam sequenceParticipantBorderThickness 1.5
+skinparam responseMessageBelowArrow true
+skinparam sequenceFontSize 11
 
-actor Waiter
-participant ":TableService" as TS
-participant "Table\n[State Pattern]" as T
-participant ":OrderService" as OS
-participant "MenuItemFactory\n[Factory Method]" as MF
-participant "AllergenFlagDecorator\n[Decorator]" as DEC
-participant ":Order\n[Observer Subject]" as O
-participant ":KitchenQueue\n[Command Invoker]" as KQ
-participant "PrepareOrderCommand\n[Command]" as CMD
-participant "Redis List" as R
-participant "WaiterNotifier\n[Observer]" as WN
-participant "ManagerDashboard\n[Observer]" as MGR
-participant ":BillingFacade\n[Facade]" as BF
-participant ":PricingStrategy\n[Strategy]" as PS
-participant ":TaxCalculator" as TC
-participant "OrderHistoryLog\n[Singleton]" as OHL
 actor Cashier
+participant "BillingController" as CTRL
+participant "BillingService" as SVC
+participant "KitchenQueue\n<<Invoker>>" as KQ
+participant "ServeOrderCommand\n<<ConcreteCommand>>" as CMD
+participant "Order\n<<ConcreteSubject>>" as ORD
+participant "WaiterNotifier\n<<ConcreteObserver>>" as WN
+participant "HappyHourPricingStrategy\n<<ConcreteStrategy>>" as PS
+participant "BillingFacade\n<<Facade>>" as FAC
+participant "TaxCalculator" as TAX
+participant "OrderHistoryLog\n<<Singleton>>" as LOG
 
-== 1. Seat Customer (State Pattern) ==
-Waiter -> TS: seatCustomer(tableId=3)
-TS -> T: occupy()
-T -> T: FreeState.occupy()\nsetStatus(OCCUPIED)\nsetCurrentState(OccupiedState)
-TS --> Waiter: Table 3 → OCCUPIED
+Cashier -> CTRL : POST /api/billing/generate/{orderId}?strategy=HAPPY_HOUR
 
-== 2. Create Order ==
-Waiter -> OS: createOrder(tableId=3)
-OS -> OS: registerObservers()
-OS --> Waiter: Order #42 (PENDING)
+activate CTRL
+CTRL -> SVC : generateBill(orderId, "HAPPY_HOUR")
+activate SVC
 
-== 3. Add Items (Factory + Decorator) ==
-Waiter -> OS: addItem(orderId=42, menuItemId=7, qty=2)
-OS -> MF: MenuItemFactory.forCategory("MAIN_COURSE")
-MF --> OS: MainCourseFactory
-OS -> MF: createAndValidate("Ribeye Steak", £28.00)
-MF --> OS: new MainCourse
-note right: Allergen detected
-OS -> DEC: new AllergenFlagDecorator(mainCourse, "gluten")
-DEC --> OS: decorated item ⚠️
-OS --> Waiter: item added (allergenFlagged=true)
-
-== 4. Submit Order (Command Pattern) ==
-Waiter -> OS: submitOrder(orderId=42)
-OS -> KQ: execute(new PrepareOrderCommand(order))
-KQ -> CMD: execute()
-CMD -> O: updateStatus(PREPARING)
-O -> WN: onOrderStatusChanged(PREPARING)
-O -> MGR: onOrderStatusChanged(PREPARING)
-KQ -> R: LPUSH kitchen:queue "PREPARE #42"
-KQ --> OS: command queued + executed
-
-== 5. Kitchen Prepares (Command) ==
-note over KQ,CMD: Chef views queue, cooks food
-KQ -> CMD: execute(ExpediteOrderCommand)
-CMD -> O: updateStatus(READY)
-O -> WN: onOrderStatusChanged(READY)
-WN -> R: PUBLISH notifications:waiter:2\n"ORDER READY: Table 3 #42"
-O -> MGR: onOrderStatusChanged(READY)
-
-== 6. Request Bill (State Pattern) ==
-Waiter -> TS: requestBill(tableId=3)
-TS -> T: awaitBill()
-T -> T: OccupiedState.awaitBill()\nsetStatus(AWAITING_BILL)
-
-== 7. Generate Bill (Facade + Strategy) ==
-Cashier -> BF: generateBill(order, "STANDARD")
-BF -> PS: calculateTotal(order) [StandardPricingStrategy]
-PS --> BF: £56.00
-BF -> TC: calculateTax(£56.00)
-TC --> BF: £11.20 (20% VAT)
-BF -> BF: buildLineItems()
-BF -> OHL: getInstance().append(OrderRecord)
-note right of OHL
-  SINGLETON — same instance
-  across all subsystems.
-  Double-checked locking.
+SVC -> SVC : order = orderRepository.findById(orderId)
+note right of SVC
+  Guard checks:
+  order.status == CANCELLED
+    → throw BadRequestException
+  order.status == SERVED
+    → skip command (idempotent)
 end note
-BF --> Cashier: Bill #17 — Total £67.20
 
-== 8. Payment & Clear ==
-Cashier -> BF: markPaid(billId=17)
-Cashier -> TS: clearTable(tableId=3)
-TS -> T: clear()
-T -> T: AwaitingBillState.clear()\nsetStatus(CLEARED)\nsetCurrentState(ClearedState)\nclear() → FreeState
+alt order.status != SERVED and != CANCELLED
+
+  note over SVC, ORD #DDEEFF
+    ① COMMAND PATTERN
+    Cashier generating bill triggers
+    ServeOrderCommand through KitchenQueue
+    (Invoker) — stores undo history
+  end note
+
+  SVC -> ORD : addObserver(waiterNotifier)\naddObserver(managerDashboard)\naddObserver(kitchenDisplayObserver)
+  activate ORD
+
+  SVC -> KQ : execute(new ServeOrderCommand(order))
+  activate KQ
+
+  create CMD
+  KQ -> CMD : new ServeOrderCommand(order)
+  activate CMD
+
+  CMD -> ORD : updateStatus(SERVED)
+  note right of CMD
+    previousStatus stored
+    before change — enables undo()
+  end note
+
+  ORD -> ORD : status = SERVED\nupdatedAt = now()
+
+  ORD -> WN : onOrderStatusChanged(order, SERVED)
+  activate WN
+  WN --> ORD : publish("notifications:waiter", msg)
+  deactivate WN
+
+  CMD --> KQ : void
+  deactivate CMD
+
+  KQ -> KQ : commandHistory.push(cmd)
+  KQ --> SVC : void
+  deactivate KQ
+
+  SVC -> SVC : orderRepository.save(order)
+  deactivate ORD
+
+end
+
+note over SVC, PS #DDFFDD
+  ② STRATEGY PATTERN
+  Algorithm selected at runtime —
+  BillingFacade never changed
+end note
+
+SVC -> SVC : strategy = selectStrategy("HAPPY_HOUR")
+note right of SVC
+  "HAPPY_HOUR"   → happyHourPricing
+  "LOYALTY_CARD" → loyaltyCardPricing
+  default        → standardPricing
+end note
+
+SVC -> FAC : generateBill(order, happyHourPricingStrategy)
+activate FAC
+
+FAC -> PS : calculateTotal(order)
+activate PS
+note right of PS
+  subtotal × 0.80
+  (20% Happy Hour discount)
+end note
+PS --> FAC : subtotal : BigDecimal
+deactivate PS
+
+FAC -> TAX : calculateTax(subtotal)
+activate TAX
+note right of TAX
+  subtotal × 0.20 (VAT)
+end note
+TAX --> FAC : tax : BigDecimal
+deactivate TAX
+
+FAC -> FAC : total = subtotal + tax\nbuild Bill + BillLineItems\nbillRepository.save(bill)
+
+note over FAC, LOG #FFF3CD
+  ③ SINGLETON PATTERN
+  One global OrderHistoryLog instance
+  receives the confirmed record
+end note
+
+FAC -> LOG : getInstance()
+activate LOG
+note right of LOG
+  Double-checked locking:
+  if(instance == null) {
+    synchronized(class) {
+      if(instance == null)
+        instance = new ...
+    }
+  }
+end note
+LOG --> FAC : OrderHistoryLog instance
+
+FAC -> LOG : append(OrderRecord)
+note right of LOG
+  historyRepository.save(record) ← DB
+  records.add(record) ← CopyOnWriteArrayList
+end note
+LOG --> FAC : void
+deactivate LOG
+
+FAC --> SVC : Bill
+deactivate FAC
+
+SVC --> CTRL : Bill
+deactivate SVC
+
+CTRL --> Cashier : 201 Created\n{Bill JSON}
+deactivate CTRL
 
 @enduml

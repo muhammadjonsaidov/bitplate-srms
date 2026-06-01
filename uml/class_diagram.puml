@@ -1,17 +1,19 @@
-@startuml BitePlate_ClassDiagram
+@startuml BitePlate_CoreClassDiagram
 title BitePlate SRMS — Core System Class Diagram
 
-skinparam backgroundColor white
+skinparam backgroundColor #FAFAFA
 skinparam classAttributeIconSize 0
-skinparam classFontSize 12
+skinparam classFontSize 11
+skinparam classFontName Arial
 skinparam packageStyle rectangle
+skinparam linetype ortho
 
-' ─────────────────────────────────────────────
-' COMPOSITE + DECORATOR + FACTORY METHOD
-' ─────────────────────────────────────────────
-package "Menu Domain" {
+' ═══════════════════════════════════════════════
+' MENU DOMAIN
+' ═══════════════════════════════════════════════
+package "Menu" #EFF5FB {
 
-  interface MenuComponent {
+  interface MenuComponent <<interface>> {
     +getName() : String
     +getDescription() : String
     +getPrice() : BigDecimal
@@ -24,20 +26,25 @@ package "Menu Domain" {
     #description : String
     #price : BigDecimal
     #available : boolean
-    +getCategory() : String  {abstract}
+    #allergens : String
+    +{abstract} getCategory() : String
     +getName() : String
     +getPrice() : BigDecimal
+    +isAvailable() : boolean
   }
 
   class Starter {
     +getCategory() : String
   }
+
   class MainCourse {
     +getCategory() : String
   }
+
   class Dessert {
     +getCategory() : String
   }
+
   class Beverage {
     +getCategory() : String
   }
@@ -45,21 +52,19 @@ package "Menu Domain" {
   class ComboMeal {
     -id : Long
     -name : String
-    -items : List<MenuComponent>
-    +add(c : MenuComponent) : void
-    +remove(c : MenuComponent) : void
+    -description : String
+    -available : boolean
+    +getName() : String
     +getPrice() : BigDecimal
     +display() : void
+    +getItems() : List<MenuItem>
   }
 
-  ' Decorator hierarchy
   abstract class MenuItemDecorator {
     #wrapped : MenuComponent
     +MenuItemDecorator(c : MenuComponent)
     +getName() : String
-    +getDescription() : String
     +getPrice() : BigDecimal
-    +display() : void
   }
 
   class AllergenFlagDecorator {
@@ -68,6 +73,7 @@ package "Menu Domain" {
   }
 
   class SpecialPrepDecorator {
+    -prepNote : String
     -surcharge : BigDecimal
     +getPrice() : BigDecimal
     +getDescription() : String
@@ -80,61 +86,51 @@ package "Menu Domain" {
     +getDescription() : String
   }
 
-  ' Factory Method
   abstract class MenuItemFactory {
     +{static} forCategory(category : String) : MenuItemFactory
-    +createAndValidate(name : String, price : BigDecimal) : MenuItem  {abstract}
+    +{abstract} createAndValidate(name : String, price : BigDecimal) : MenuItem
     #validate(item : MenuItem) : void
   }
+
   class StarterFactory {
     +createAndValidate(name : String, price : BigDecimal) : Starter
   }
+
   class MainCourseFactory {
     +createAndValidate(name : String, price : BigDecimal) : MainCourse
   }
+
   class DessertFactory {
     +createAndValidate(name : String, price : BigDecimal) : Dessert
   }
+
   class BeverageFactory {
     +createAndValidate(name : String, price : BigDecimal) : Beverage
   }
 
-  MenuItem        ..|> MenuComponent
-  ComboMeal       ..|> MenuComponent
-  MenuItemDecorator ..|> MenuComponent
-  Starter         --|> MenuItem
-  MainCourse      --|> MenuItem
-  Dessert         --|> MenuItem
-  Beverage        --|> MenuItem
-  AllergenFlagDecorator    --|> MenuItemDecorator
-  SpecialPrepDecorator     --|> MenuItemDecorator
-  SubstitutionDecorator    --|> MenuItemDecorator
-  MenuItemDecorator o-- MenuComponent : wraps >
-  ComboMeal o-- "0..*" MenuComponent : contains >
-  StarterFactory    --|> MenuItemFactory
-  MainCourseFactory --|> MenuItemFactory
-  DessertFactory    --|> MenuItemFactory
-  BeverageFactory   --|> MenuItemFactory
+  MenuItem        ..|> MenuComponent : realises
+  ComboMeal       ..|> MenuComponent : realises
+  MenuItemDecorator ..|> MenuComponent : realises
+  Starter         --|> MenuItem : extends
+  MainCourse      --|> MenuItem : extends
+  Dessert         --|> MenuItem : extends
+  Beverage        --|> MenuItem : extends
+  AllergenFlagDecorator  --|> MenuItemDecorator
+  SpecialPrepDecorator   --|> MenuItemDecorator
+  SubstitutionDecorator  --|> MenuItemDecorator
+  MenuItemDecorator "1" o-- "1" MenuComponent : wraps >
+  ComboMeal "1" o-- "0..*" MenuItem : contains >
+  StarterFactory     --|> MenuItemFactory
+  MainCourseFactory  --|> MenuItemFactory
+  DessertFactory     --|> MenuItemFactory
+  BeverageFactory    --|> MenuItemFactory
   MenuItemFactory ..> MenuItem : <<creates>>
 }
 
-' ─────────────────────────────────────────────
-' STATE PATTERN — RestaurantTable
-' ─────────────────────────────────────────────
-package "Table Domain" {
-
-  interface TableState {
-    +reserve(t : RestaurantTable) : void
-    +occupy(t : RestaurantTable) : void
-    +awaitBill(t : RestaurantTable) : void
-    +clear(t : RestaurantTable) : void
-  }
-
-  class FreeState       { +occupy() \n+reserve() }
-  class ReservedState   { +occupy() \n+clear() }
-  class OccupiedState   { +awaitBill() }
-  class AwaitingBillState { +clear() }
-  class ClearedState    { +occupy() }
+' ═══════════════════════════════════════════════
+' TABLE DOMAIN  (State Pattern)
+' ═══════════════════════════════════════════════
+package "Table" #EBF5EB {
 
   enum TableStatus {
     FREE
@@ -144,102 +140,193 @@ package "Table Domain" {
     CLEARED
   }
 
+  interface TableState <<interface>> {
+    +reserve(t : RestaurantTable) : void
+    +occupy(t : RestaurantTable) : void
+    +awaitBill(t : RestaurantTable) : void
+    +clear(t : RestaurantTable) : void
+  }
+
+  class FreeState       { +occupy(t) \n+reserve(t) }
+  class ReservedState   { +occupy(t) \n+clear(t) }
+  class OccupiedState   { +awaitBill(t) }
+  class AwaitingBillState { +clear(t) }
+  class ClearedState    { +occupy(t) }
+
   class RestaurantTable {
     -id : Long
     -tableNumber : int
     -capacity : int
     -status : TableStatus
-    -currentState : TableState  {transient}
+    -currentState : TableState
+    -createdAt : LocalDateTime
     +reserve() : void
     +occupy() : void
     +awaitBill() : void
     +clear() : void
-    -restoreState() : void  <<@PostLoad>>
+    -restoreState() : void
   }
+  note bottom of RestaurantTable
+    restoreState() annotated @PostLoad.
+    Reconstructs transient TableState
+    from persisted TableStatus enum
+    after JPA loads the entity.
+  end note
 
   FreeState        ..|> TableState
   ReservedState    ..|> TableState
   OccupiedState    ..|> TableState
   AwaitingBillState ..|> TableState
   ClearedState     ..|> TableState
-  RestaurantTable o-- TableState : currentState >
+  RestaurantTable "1" *-- "1" TableState : currentState
   RestaurantTable --> TableStatus
 }
 
-' ─────────────────────────────────────────────
-' OBSERVER PATTERN — Order
-' ─────────────────────────────────────────────
-package "Order Domain" {
+' ═══════════════════════════════════════════════
+' STAFF DOMAIN  (Inheritance + Polymorphism)
+' ═══════════════════════════════════════════════
+package "Staff" #FEF9E7 {
 
-  interface OrderObserver {
-    +onOrderStatusChanged(order : Order, status : OrderStatus) : void
+  enum StaffRole {
+    MANAGER
+    HEAD_CHEF
+    WAITER
+    CASHIER
   }
 
-  interface OrderSubject {
-    +registerObserver(o : OrderObserver) : void
-    +removeObserver(o : OrderObserver) : void
-    +notifyObservers() : void
+  abstract class Staff {
+    #id : Long
+    #name : String
+    #username : String
+    #password : String
+    #role : StaffRole
+    #active : boolean
+    #createdAt : LocalDateTime
+    +{abstract} getPermissions() : Set<String>
+    +hasPermission(p : String) : boolean
+    +getAuthorities() : Collection<GrantedAuthority>
   }
+
+  class Manager {
+    +getPermissions() : Set<String>
+  }
+  note right of Manager
+    Returns: VIEW_MENU, MANAGE_MENU,
+    VIEW_TABLES, MANAGE_TABLES,
+    CREATE_ORDER, MODIFY_ORDER,
+    CANCEL_ORDER, VIEW_KITCHEN,
+    MANAGE_KITCHEN, VIEW_BILLING,
+    PROCESS_BILLING, VIEW_REPORTS,
+    VIEW_HISTORY, MANAGE_STAFF
+  end note
+
+  class Chef {
+    +getPermissions() : Set<String>
+  }
+
+  class Waiter {
+    +getPermissions() : Set<String>
+  }
+
+  class Cashier {
+    +getPermissions() : Set<String>
+  }
+
+  Manager --|> Staff
+  Chef    --|> Staff
+  Waiter  --|> Staff
+  Cashier --|> Staff
+  Staff --> StaffRole
+}
+
+' ═══════════════════════════════════════════════
+' RESERVATION DOMAIN
+' ═══════════════════════════════════════════════
+package "Reservation" #F9EBEA {
+
+  enum ReservationStatus {
+    CONFIRMED
+    CANCELLED
+    COMPLETED
+  }
+
+  class Reservation {
+    -id : Long
+    -customerName : String
+    -customerPhone : String
+    -partySize : int
+    -reservationTime : LocalDateTime
+    -status : ReservationStatus
+    -createdAt : LocalDateTime
+  }
+
+  Reservation --> ReservationStatus
+  Reservation "0..*" --> "1" RestaurantTable : reserved for >
+}
+
+' ═══════════════════════════════════════════════
+' ORDER DOMAIN  (Observer Pattern)
+' ═══════════════════════════════════════════════
+package "Order" #F4ECF7 {
 
   enum OrderStatus {
     PENDING
     PREPARING
     READY
-    DELIVERED
+    SERVED
     CANCELLED
+  }
+
+  interface OrderObserver <<interface>> {
+    +onOrderStatusChanged(order : Order, status : OrderStatus) : void
+  }
+
+  interface OrderSubject <<interface>> {
+    +addObserver(o : OrderObserver) : void
+    +removeObserver(o : OrderObserver) : void
+    +notifyObservers(s : OrderStatus) : void
   }
 
   class Order {
     -id : Long
-    -tableId : Long
+    -notes : String
     -status : OrderStatus
     -createdAt : LocalDateTime
-    -observers : List<OrderObserver>  {transient}
-    +registerObserver(o : OrderObserver) : void
-    +removeObserver(o : OrderObserver) : void
+    -updatedAt : LocalDateTime
+    -observers : List<OrderObserver>
+    +addItem(item : OrderItem) : void
+    +removeItem(item : OrderItem) : void
+    +calculateSubtotal() : BigDecimal
     +updateStatus(s : OrderStatus) : void
-    -notifyObservers() : void
+    +addObserver(o : OrderObserver) : void
+    +removeObserver(o : OrderObserver) : void
+    -notifyObservers(s : OrderStatus) : void
   }
 
   class OrderItem {
     -id : Long
-    -menuItemId : Long
     -quantity : int
     -unitPrice : BigDecimal
+    -customisations : String
     -allergenFlagged : boolean
     +getLineTotal() : BigDecimal
   }
 
-  class WaiterNotifier {
-    -publisher : RedisNotificationPublisher
-    +onOrderStatusChanged(order : Order, status : OrderStatus) : void
-  }
-
-  class ManagerDashboard {
-    -publisher : RedisNotificationPublisher
-    +onOrderStatusChanged(order : Order, status : OrderStatus) : void
-  }
-
-  class KitchenDisplayObserver {
-    -publisher : RedisNotificationPublisher
-    +onOrderStatusChanged(order : Order, status : OrderStatus) : void
-  }
-
-  Order ..|> OrderSubject
-  Order "1" o-- "0..*" OrderItem : contains >
-  Order o-- "0..*" OrderObserver : observers >
-  WaiterNotifier ..|> OrderObserver
-  ManagerDashboard ..|> OrderObserver
-  KitchenDisplayObserver ..|> OrderObserver
+  Order ..|> OrderSubject : realises
+  Order "1" *-- "1..*" OrderItem : contains
+  Order "0..*" --> "1" RestaurantTable : placed at >
+  Order "0..*" --> "1" Staff : taken by >
   Order --> OrderStatus
+  OrderItem "0..*" --> "1" MenuItem : refers to >
+  Order "1" o-- "0..*" OrderObserver : observers (transient)
 }
 
-' ─────────────────────────────────────────────
-' COMMAND PATTERN — KitchenQueue
-' ─────────────────────────────────────────────
-package "Kitchen Domain" {
+' ═══════════════════════════════════════════════
+' KITCHEN DOMAIN  (Command Pattern)
+' ═══════════════════════════════════════════════
+package "Kitchen" #FDF2E9 {
 
-  interface KitchenCommand {
+  interface KitchenCommand <<interface>> {
     +execute() : void
     +undo() : void
     +getDescription() : String
@@ -250,6 +337,8 @@ package "Kitchen Domain" {
     -previousStatus : OrderStatus
     +execute() : void
     +undo() : void
+    +getDescription() : String
+    +getOrder() : Order
   }
 
   class ExpediteOrderCommand {
@@ -257,6 +346,8 @@ package "Kitchen Domain" {
     -previousStatus : OrderStatus
     +execute() : void
     +undo() : void
+    +getDescription() : String
+    +getOrder() : Order
   }
 
   class CancelOrderCommand {
@@ -264,40 +355,44 @@ package "Kitchen Domain" {
     -previousStatus : OrderStatus
     +execute() : void
     +undo() : void
+    +getDescription() : String
+    +getOrder() : Order
   }
 
-  class KitchenQueue {
+  class ServeOrderCommand {
+    -order : Order
+    -previousStatus : OrderStatus
+    +execute() : void
+    +undo() : void
+    +getDescription() : String
+    +getOrder() : Order
+  }
+
+  class KitchenQueue <<Invoker>> {
     -commandHistory : Deque<KitchenCommand>
-    -redisAdapter : KitchenQueueRedisAdapter
     +execute(cmd : KitchenCommand) : void
-    +undoLast() : void
-    +getQueue() : List<String>
-  }
-
-  class KitchenQueueRedisAdapter {
-    -redisTemplate : RedisTemplate
-    -QUEUE_KEY : String  {static}
-    +push(description : String) : void
-    +pop() : String
-    +peek() : List<String>
+    +undoLastWithReload(repo : OrderRepository) : Optional<String>
+    +hasCommands() : boolean
+    +queueSize() : int
   }
 
   PrepareOrderCommand   ..|> KitchenCommand
   ExpediteOrderCommand  ..|> KitchenCommand
   CancelOrderCommand    ..|> KitchenCommand
-  KitchenQueue "1" *-- "0..*" KitchenCommand : history >
-  KitchenQueue --> KitchenQueueRedisAdapter : uses >
-  PrepareOrderCommand --> Order
-  ExpediteOrderCommand --> Order
-  CancelOrderCommand --> Order
+  ServeOrderCommand     ..|> KitchenCommand
+  KitchenQueue "1" o-- "0..*" KitchenCommand : history (Deque)
+  PrepareOrderCommand  --> Order : receiver
+  ExpediteOrderCommand --> Order : receiver
+  CancelOrderCommand   --> Order : receiver
+  ServeOrderCommand    --> Order : receiver
 }
 
-' ─────────────────────────────────────────────
-' STRATEGY + FACADE — Billing
-' ─────────────────────────────────────────────
-package "Billing Domain" {
+' ═══════════════════════════════════════════════
+' BILLING DOMAIN  (Strategy + Facade + Composite)
+' ═══════════════════════════════════════════════
+package "Billing" #E8F8F5 {
 
-  interface PricingStrategy {
+  interface PricingStrategy <<interface>> {
     +calculateTotal(order : Order) : BigDecimal
     +getStrategyName() : String
   }
@@ -308,152 +403,118 @@ package "Billing Domain" {
   }
 
   class HappyHourPricingStrategy {
-    -DISCOUNT_RATE : BigDecimal = 0.20  {static}
+    -{static} DISCOUNT : BigDecimal = 0.20
     +calculateTotal(order : Order) : BigDecimal
     +getStrategyName() : String
   }
 
   class LoyaltyCardPricingStrategy {
-    -DISCOUNT_RATE : BigDecimal = 0.10  {static}
-    -DRINK_CREDIT : BigDecimal = 3.00   {static}
+    -{static} DISCOUNT : BigDecimal = 0.10
+    -{static} DRINK_CREDIT : BigDecimal = 3.00
     +calculateTotal(order : Order) : BigDecimal
     +getStrategyName() : String
   }
 
   class TaxCalculator {
-    -VAT_RATE : BigDecimal = 0.20  {static}
+    -{static} VAT_RATE : BigDecimal = 0.20
     +calculateTax(subtotal : BigDecimal) : BigDecimal
   }
 
   class TipHandler {
-    +calculateTip(subtotal : BigDecimal, tipPct : BigDecimal) : BigDecimal
+    +validateFixedTip(tip : BigDecimal) : BigDecimal
   }
 
   class SplitBillService {
-    +split(total : BigDecimal, ways : int) : List<BigDecimal>
+    +calculatePerGuest(total : BigDecimal, guests : int) : BigDecimal
   }
 
-  class BillingFacade {
-    -pricingStrategy : PricingStrategy
-    -taxCalculator : TaxCalculator
-    -tipHandler : TipHandler
-    -splitBillService : SplitBillService
-    +generateBill(order : Order, strategy : String) : Bill
-    +addTip(billId : Long, tipPct : BigDecimal) : Bill
-    +splitBill(billId : Long, ways : int) : List<BigDecimal>
-    +markPaid(billId : Long) : void
-    +setPricingStrategy(s : PricingStrategy) : void
+  class BillingFacade <<Facade>> {
+    +generateBill(order : Order, strategy : PricingStrategy) : Bill
+    +applyTip(billId : Long, tip : BigDecimal) : Bill
+    +splitBill(billId : Long, guests : int) : Bill
+    -appendToHistoryLog(order : Order, total : BigDecimal, strategy : PricingStrategy) : void
   }
 
   class Bill {
     -id : Long
-    -orderId : Long
     -subtotal : BigDecimal
     -tax : BigDecimal
     -tip : BigDecimal
     -total : BigDecimal
+    -pricingStrategy : String
+    -splitCount : int
     -paid : boolean
-    -lineItems : List<BillLineItem>
+    -createdAt : LocalDateTime
+    +addLineItem(desc : String, amount : BigDecimal) : void
   }
 
   class BillLineItem {
+    -id : Long
     -description : String
-    -quantity : int
-    -unitPrice : BigDecimal
-    -lineTotal : BigDecimal
+    -amount : BigDecimal
   }
 
-  StandardPricingStrategy   ..|> PricingStrategy
-  HappyHourPricingStrategy  ..|> PricingStrategy
+  StandardPricingStrategy    ..|> PricingStrategy
+  HappyHourPricingStrategy   ..|> PricingStrategy
   LoyaltyCardPricingStrategy ..|> PricingStrategy
-  BillingFacade o-- PricingStrategy
   BillingFacade *-- TaxCalculator
   BillingFacade *-- TipHandler
   BillingFacade *-- SplitBillService
+  BillingFacade ..> PricingStrategy : uses
   BillingFacade ..> Bill : <<creates>>
-  Bill "1" *-- "1..*" BillLineItem
-  BillingFacade --> Order : reads >
+  BillingFacade --> Order : reads
+  Bill "1" *-- "1..*" BillLineItem : composed of
+  Bill "1" --> "1" Order : for
 }
 
-' ─────────────────────────────────────────────
-' SINGLETON + ITERATOR — OrderHistoryLog
-' ─────────────────────────────────────────────
-package "History Domain" {
+' ═══════════════════════════════════════════════
+' HISTORY DOMAIN  (Singleton + Iterator)
+' ═══════════════════════════════════════════════
+package "History" #F2F3F4 {
 
-  class OrderHistoryLog {
-    -{static} instance : OrderHistoryLog  {volatile}
-    -records : CopyOnWriteArrayList<OrderRecord>
+  class OrderHistoryLog <<Singleton>> {
+    -{static} instance : OrderHistoryLog
+    -records : List<OrderRecord>
     -OrderHistoryLog()
     +{static} getInstance() : OrderHistoryLog
     +append(record : OrderRecord) : void
+    +getOrdersInDateRange(from : LocalDate, to : LocalDate) : List<OrderRecord>
+    +getOrdersByTable(tableNumber : int) : List<OrderRecord>
+    +getMostFrequentlyOrderedItem() : String
     +iterator() : Iterator<OrderRecord>
     +size() : int
   }
   note right of OrderHistoryLog
     SINGLETON — double-checked locking.
-    Underlined getInstance() per UML convention.
-    implements Iterable<OrderRecord>
+    {static} instance and {static} getInstance()
+    are underlined per UML notation.
+    Thread-safe: volatile + synchronized block.
+    Backed by CopyOnWriteArrayList.
   end note
 
   class OrderRecord {
+    -id : Long
     -orderId : Long
-    -tableId : Long
+    -tableNumber : int
+    -staffId : Long
+    -staffName : String
+    -itemsSummary : String
     -total : BigDecimal
-    -timestamp : LocalDateTime
-    -strategy : String
+    -pricingStrategy : String
+    -recordedAt : LocalDateTime
   }
 
   class OrderHistoryIterator {
     -snapshot : List<OrderRecord>
-    -cursor : int
+    -index : int
     +hasNext() : boolean
     +next() : OrderRecord
   }
 
-  OrderHistoryLog "1" *-- "0..*" OrderRecord : stores >
+  OrderHistoryLog "1" *-- "0..*" OrderRecord : stores
   OrderHistoryLog ..> OrderHistoryIterator : <<creates>>
-  OrderHistoryIterator --> OrderRecord : iterates >
+  OrderHistoryIterator --> OrderRecord : iterates
+  BillingFacade ..> OrderHistoryLog : uses (Singleton)
 }
-
-' ─────────────────────────────────────────────
-' STAFF HIERARCHY (Inheritance + Polymorphism)
-' ─────────────────────────────────────────────
-package "Staff Domain" {
-
-  abstract class Staff {
-    #id : Long
-    #username : String
-    #passwordHash : String
-    #fullName : String
-    +getPermissions() : List<String>  {abstract}
-  }
-
-  class WaiterStaff {
-    +getPermissions() : List<String>
-  }
-  class ChefStaff {
-    +getPermissions() : List<String>
-  }
-  class CashierStaff {
-    +getPermissions() : List<String>
-  }
-  class ManagerStaff {
-    +getPermissions() : List<String>
-  }
-
-  WaiterStaff  --|> Staff
-  ChefStaff    --|> Staff
-  CashierStaff --|> Staff
-  ManagerStaff --|> Staff
-}
-
-' ─────────────────────────────────────────────
-' CROSS-PACKAGE RELATIONSHIPS
-' ─────────────────────────────────────────────
-Order --> RestaurantTable : tableId >
-BillingFacade --> OrderHistoryLog : uses (Singleton) >
-KitchenQueue --> Order : updates status >
-OrderService ..> MenuItemFactory : uses >
-OrderService ..> AllergenFlagDecorator : decorates item >
 
 @enduml

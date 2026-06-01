@@ -1,118 +1,154 @@
 @startuml BitePlate_UseCaseDiagram
 title BitePlate SRMS — System Use Case Diagram
 
+skinparam backgroundColor #FAFAFA
 skinparam actorStyle awesome
+skinparam usecaseFontSize 11
 skinparam packageStyle rectangle
-skinparam backgroundColor white
+skinparam usecaseBorderThickness 1.5
 
-actor Customer
-actor Waiter
-actor "Head Chef" as Chef
-actor Cashier
-actor Manager
-actor System
+' ─────────────────────────
+' ACTORS
+' ─────────────────────────
+actor Waiter       as W
+actor "Head Chef"  as HC
+actor Cashier      as C
+actor Manager      as M
 
-rectangle "Table Management" {
-  usecase "View Table Status" as UC1
-  usecase "Reserve Table" as UC2
-  usecase "Seat Customer" as UC3
-  usecase "Clear Table" as UC4
+' Manager inherits from all roles
+M --|> W  : generalises
+M --|> HC : generalises
+M --|> C  : generalises
+
+' ─────────────────────────
+' SYSTEM BOUNDARY
+' ─────────────────────────
+rectangle "BitePlate SRMS" {
+
+  ' ── TABLE MANAGEMENT ──────────────────
+  package "Table Management" {
+    usecase "View Table Status Board"  as UC_T1
+    usecase "Seat Customer"            as UC_T2
+    usecase "Mark Table Awaiting Bill" as UC_T3
+    usecase "Clear Table"              as UC_T4
+    usecase "Make Reservation"         as UC_T5
+    usecase "Cancel Reservation"       as UC_T6
+  }
+
+  ' ── ORDER MANAGEMENT ──────────────────
+  package "Order Management" {
+    usecase "Create Order"          as UC_O1
+    usecase "Add Item to Order"     as UC_O2
+    usecase "Remove Item from Order" as UC_O3
+    usecase "Submit Order to Kitchen" as UC_O4
+    usecase "View Order Status"     as UC_O5
+    usecase "Apply Allergen Flag"   as UC_O6
+    usecase "Apply Meal Customisation" as UC_O7
+  }
+
+  ' ── KITCHEN QUEUE ─────────────────────
+  package "Kitchen Queue" {
+    usecase "View Kitchen Queue"     as UC_K1
+    usecase "Mark Order Preparing"   as UC_K2
+    usecase "Mark Order Ready"       as UC_K3
+    usecase "Cancel Order"           as UC_K4
+    usecase "Undo Last Action"       as UC_K5
+  }
+
+  ' ── BILLING & POS ─────────────────────
+  package "Billing & POS" {
+    usecase "Generate Bill"          as UC_B1
+    usecase "Apply Pricing Strategy" as UC_B2
+    usecase "Add Tip"                as UC_B3
+    usecase "Split Bill"             as UC_B4
+    usecase "Mark Bill Paid"         as UC_B5
+  }
+
+  ' ── MENU ADMINISTRATION ───────────────
+  package "Menu Administration" {
+    usecase "View Menu"              as UC_M1
+    usecase "Add Menu Item"          as UC_M2
+    usecase "Toggle Item Availability" as UC_M3
+    usecase "Delete Menu Item"       as UC_M4
+  }
+
+  ' ── REPORTS ───────────────────────────
+  package "Reports & History" {
+    usecase "View Order History"     as UC_R1
+    usecase "Query by Date Range"    as UC_R2
+    usecase "Query by Table"         as UC_R3
+    usecase "View Most Ordered Item" as UC_R4
+  }
+
+  ' ─────────────────────────
+  ' INCLUDE RELATIONSHIPS
+  ' ─────────────────────────
+  UC_O4 ..> UC_O1 : <<include>>
+  UC_O2 ..> UC_O1 : <<include>>
+  UC_O3 ..> UC_O1 : <<include>>
+
+  UC_B1 ..> UC_B2 : <<include>>
+
+  UC_R2 ..> UC_R1 : <<include>>
+  UC_R3 ..> UC_R1 : <<include>>
+  UC_R4 ..> UC_R1 : <<include>>
+
+  ' ─────────────────────────
+  ' EXTEND RELATIONSHIPS
+  ' ─────────────────────────
+  UC_O6 ..> UC_O2 : <<extend>>\n[allergen detected]
+  UC_O7 ..> UC_O2 : <<extend>>\n[customisation requested]
+
+  UC_B3 ..> UC_B1 : <<extend>>\n[tip added]
+  UC_B4 ..> UC_B1 : <<extend>>\n[split requested]
+
+  UC_K5 ..> UC_K2 : <<extend>>\n[undo requested]
+  UC_K5 ..> UC_K3 : <<extend>>\n[undo requested]
+  UC_K5 ..> UC_K4 : <<extend>>\n[undo requested]
 }
 
-rectangle "Order Management" {
-  usecase "Place Order" as UC5
-  usecase "Modify Order" as UC6
-  usecase "Cancel Order" as UC7
-  usecase "View Order Status" as UC8
-}
+' ─────────────────────────
+' ACTOR — USE CASE ASSOCIATIONS
+' ─────────────────────────
 
-rectangle "Kitchen Operations" {
-  usecase "View Kitchen Queue" as UC9
-  usecase "Prepare Order" as UC10
-  usecase "Expedite Order" as UC11
-  usecase "Undo Last Action" as UC12
-}
+' Waiter
+W -- UC_T1
+W -- UC_T2
+W -- UC_T3
+W -- UC_T4
+W -- UC_T5
+W -- UC_T6
+W -- UC_O1
+W -- UC_O2
+W -- UC_O3
+W -- UC_O4
+W -- UC_O5
+W -- UC_M1
 
-rectangle "Billing & POS" {
-  usecase "Generate Bill" as UC13
-  usecase "Apply Tip" as UC14
-  usecase "Split Bill" as UC15
-  usecase "Process Payment" as UC16
-}
+' Head Chef
+HC -- UC_K1
+HC -- UC_K2
+HC -- UC_K3
+HC -- UC_K4
+HC -- UC_K5
+HC -- UC_M1
+HC -- UC_M2
+HC -- UC_M3
 
-rectangle "Menu Management" {
-  usecase "View Menu" as UC17
-  usecase "Add Menu Item" as UC18
-  usecase "Customise Dish" as UC19
-}
+' Cashier
+C -- UC_B1
+C -- UC_B2
+C -- UC_B3
+C -- UC_B4
+C -- UC_B5
+C -- UC_O5
+C -- UC_T1
 
-rectangle "Reporting" {
-  usecase "View Order History" as UC20
-  usecase "View Analytics" as UC21
-}
-
-rectangle "Authentication" {
-  usecase "Login" as UC23
-  usecase "Logout" as UC24
-}
-
-Customer --> UC2
-Customer --> UC19
-
-Waiter --> UC1
-Waiter --> UC3
-Waiter --> UC4
-Waiter --> UC5
-Waiter --> UC6
-Waiter --> UC8
-Waiter --> UC17
-Waiter --> UC23
-Waiter --> UC24
-
-Chef --> UC9
-Chef --> UC10
-Chef --> UC11
-Chef --> UC12
-Chef --> UC17
-Chef --> UC18
-Chef --> UC23
-
-Cashier --> UC8
-Cashier --> UC13
-Cashier --> UC14
-Cashier --> UC15
-Cashier --> UC16
-Cashier --> UC23
-
-Manager --> UC1
-Manager --> UC2
-Manager --> UC3
-Manager --> UC4
-Manager --> UC5
-Manager --> UC6
-Manager --> UC7
-Manager --> UC8
-Manager --> UC9
-Manager --> UC10
-Manager --> UC11
-Manager --> UC12
-Manager --> UC13
-Manager --> UC14
-Manager --> UC15
-Manager --> UC16
-Manager --> UC17
-Manager --> UC18
-Manager --> UC20
-Manager --> UC21
-Manager --> UC23
-
-UC5 .> UC19 : <<extend>>
-UC13 .> UC14 : <<extend>>
-UC13 .> UC15 : <<extend>>
-UC10 .> UC9 : <<include>>
-UC21 .> UC20 : <<include>>
-
-System --> UC8 : updates via Observer
-System --> UC20 : records automatically
+' Manager (inherits all above; exclusive use cases below)
+M -- UC_M4
+M -- UC_R1
+M -- UC_R2
+M -- UC_R3
+M -- UC_R4
 
 @enduml
