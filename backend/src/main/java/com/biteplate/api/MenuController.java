@@ -68,4 +68,19 @@ public class MenuController {
     ) {
         return ResponseEntity.ok(menuService.updateAvailability(id, available));
     }
+
+    @Operation(summary = "Get ALL menu items including unavailable [MANAGER, HEAD_CHEF]")
+    @GetMapping("/admin/all")
+    @PreAuthorize("hasAnyRole('MANAGER','HEAD_CHEF')")
+    public ResponseEntity<List<MenuItem>> getAllItems() {
+        return ResponseEntity.ok(menuService.findAll());
+    }
+
+    @Operation(summary = "Delete menu item [MANAGER only]")
+    @DeleteMapping("/admin/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<Void> deleteItem(@PathVariable Long id) {
+        menuService.deleteMenuItem(id);
+        return ResponseEntity.noContent().build();
+    }
 }

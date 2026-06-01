@@ -7,6 +7,8 @@ import OrdersPage from './pages/OrdersPage'
 import KitchenPage from './pages/KitchenPage'
 import BillingPage from './pages/BillingPage'
 import DashboardPage from './pages/DashboardPage'
+import ReservationsPage from './pages/ReservationsPage'
+import MenuAdminPage from './pages/MenuAdminPage'
 import ProtectedRoute from './components/layout/ProtectedRoute'
 
 export default function App() {
@@ -21,6 +23,8 @@ export default function App() {
           <Route path="orders" element={<OrdersPage />} />
           <Route path="kitchen" element={<KitchenPage />} />
           <Route path="billing" element={<BillingPage />} />
+          <Route path="reservations" element={<ReservationsPage />} />
+          <Route path="menu-admin" element={<MenuAdminPage />} />
           <Route path="dashboard" element={<DashboardPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -51,4 +51,10 @@ public class MenuService {
         item.setAvailable(available);
         return menuItemRepository.save(item);
     }
+
+    @Transactional
+    public void deleteMenuItem(Long id) {
+        MenuItem item = findById(id);
+        menuItemRepository.delete(item);
+    }
 }

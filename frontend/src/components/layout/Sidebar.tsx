@@ -8,16 +8,19 @@ import {
   ChefHat,
   CreditCard,
   BarChart3,
-  LogOut,
+  CalendarDays,
   UtensilsCrossed,
+  LogOut,
 } from 'lucide-react'
 
 const navItems = [
-  { path: '/tables',    label: 'Tables',    icon: LayoutGrid,    roles: ['MANAGER','WAITER','CASHIER'] },
-  { path: '/orders',    label: 'Orders',    icon: ClipboardList, roles: ['MANAGER','WAITER'] },
-  { path: '/kitchen',   label: 'Kitchen',   icon: ChefHat,       roles: ['MANAGER','HEAD_CHEF'] },
-  { path: '/billing',   label: 'Billing',   icon: CreditCard,    roles: ['MANAGER','CASHIER'] },
-  { path: '/dashboard', label: 'Dashboard', icon: BarChart3,     roles: ['MANAGER'] },
+  { path: '/tables',     label: 'Tables',     icon: LayoutGrid,    roles: ['MANAGER','WAITER','CASHIER'] },
+  { path: '/orders',     label: 'Orders',     icon: ClipboardList, roles: ['MANAGER','WAITER'] },
+  { path: '/kitchen',    label: 'Kitchen',    icon: ChefHat,       roles: ['MANAGER','HEAD_CHEF'] },
+  { path: '/billing',    label: 'Billing',    icon: CreditCard,    roles: ['MANAGER','CASHIER'] },
+  { path: '/reservations', label: 'Reservations', icon: CalendarDays, roles: ['MANAGER','WAITER'] },
+  { path: '/menu-admin', label: 'Menu',       icon: UtensilsCrossed, roles: ['MANAGER'] },
+  { path: '/dashboard',  label: 'Dashboard',  icon: BarChart3,     roles: ['MANAGER'] },
 ]
 
 const roleLabels: Record<string, string> = {
@@ -46,7 +49,6 @@ export default function Sidebar() {
 
   return (
     <aside className="w-60 bg-slate-900 text-slate-100 flex flex-col flex-shrink-0">
-      {/* Brand */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-800">
         <div className="w-8 h-8 rounded-lg bg-biteplate-600 flex items-center justify-center flex-shrink-0">
           <UtensilsCrossed size={16} className="text-white" />
@@ -57,7 +59,6 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5">
         {allowed.map(({ path, label, icon: Icon }) => (
           <NavLink
@@ -77,7 +78,6 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* User info */}
       <div className="p-3 border-t border-slate-800">
         <div className="flex items-center gap-3 px-2 py-2 mb-1">
           <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-200 flex-shrink-0">
