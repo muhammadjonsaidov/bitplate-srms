@@ -71,7 +71,7 @@ export default function LoginPage() {
             ))}
           </div>
           <p className="text-surface-600 text-xs">
-            &copy; {new Date().getFullYear()} BitePlate SRMS &middot; Unit 27 Advanced Programming
+            &copy; {new Date().getFullYear()} BitePlate SRMS
           </p>
         </div>
       </div>
