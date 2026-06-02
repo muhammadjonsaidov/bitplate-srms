@@ -1,0 +1,114 @@
+@startuml BitePlate_Pattern_Command
+title BitePlate — Command Pattern Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam classFontSize 13
+skinparam defaultFontName Arial
+skinparam backgroundColor #FFFFFF
+skinparam classBorderColor #444444
+skinparam classBackgroundColor #FFFFFF
+skinparam arrowColor #444444
+skinparam arrowThickness 1.5
+skinparam packageFontSize 14
+skinparam padding 6
+
+left to right direction
+
+interface "KitchenCommand\n<<Command>>" as CMD {
+  + execute() : void
+  + undo() : void
+  + getDescription() : String
+}
+
+class "PrepareOrderCommand\n<<ConcreteCommand>>" as POC {
+  - order : Order
+  - previousStatus : OrderStatus
+  + PrepareOrderCommand(order : Order)
+  + execute() : void
+  + undo() : void
+  + getDescription() : String
+}
+
+class "CancelOrderCommand\n<<ConcreteCommand>>" as COC {
+  - order : Order
+  - previousStatus : OrderStatus
+  + CancelOrderCommand(order : Order)
+  + execute() : void
+  + undo() : void
+  + getDescription() : String
+}
+
+class "ExpediteOrderCommand\n<<ConcreteCommand>>" as EOC {
+  - order : Order
+  - previousStatus : OrderStatus
+  + ExpediteOrderCommand(order : Order)
+  + execute() : void
+  + undo() : void
+  + getDescription() : String
+}
+
+class "ServeOrderCommand\n<<ConcreteCommand>>" as SOC {
+  - order : Order
+  - previousStatus : OrderStatus
+  + ServeOrderCommand(order : Order)
+  + execute() : void
+  + undo() : void
+  + getDescription() : String
+}
+
+class "KitchenQueue\n<<Invoker>>" as KQ {
+  - commandHistory : Deque<KitchenCommand>
+  + execute(cmd : KitchenCommand) : void
+  + undoLastWithReload(repo : OrderRepository) : Optional<String>
+  + getHistory() : List<String>
+}
+
+class "Order\n<<Receiver>>" as ORD {
+  - id : Long
+  - status : OrderStatus
+  - updatedAt : LocalDateTime
+  + updateStatus(status : OrderStatus) : void
+  + getStatus() : OrderStatus
+  + notifyObservers() : void
+}
+
+class "KitchenService\n<<Client>>" as KS {
+  - kitchenQueue : KitchenQueue
+  + prepareOrder(order : Order) : void
+  + cancelOrder(order : Order) : void
+  + expediteOrder(order : Order) : void
+}
+
+CMD <|.. POC
+CMD <|.. COC
+CMD <|.. EOC
+CMD <|.. SOC
+
+KQ o-- CMD : commandHistory\n         0..*
+
+POC --> ORD : modifies
+COC --> ORD : modifies
+EOC --> ORD : modifies
+SOC --> ORD : modifies
+
+KS ..> KQ : uses
+KS ..> CMD : <<creates>>
+
+note bottom of KQ
+  Invoker never inspects command internals.
+  execute() pushes cmd to history after cmd.execute().
+  undoLastWithReload() pops last cmd and calls cmd.undo().
+end note
+
+note right of POC
+  previousStatus stored before transition —
+  enables single-step undo without extra state.
+end note
+
+note right of SOC
+  Used in the billing flow:
+  BillingService hands ServeOrderCommand
+  to KitchenQueue before pricing runs.
+end note
+
+@enduml

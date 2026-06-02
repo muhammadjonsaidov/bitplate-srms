@@ -1,0 +1,89 @@
+@startuml BitePlate_Pattern_Observer
+title BitePlate — Observer Pattern Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam classFontSize 13
+skinparam defaultFontName Arial
+skinparam backgroundColor #FFFFFF
+skinparam classBorderColor #444444
+skinparam classBackgroundColor #FFFFFF
+skinparam arrowColor #444444
+skinparam arrowThickness 1.5
+skinparam padding 6
+
+left to right direction
+
+interface "OrderSubject\n<<Subject>>" as SUBJ {
+  + addObserver(o : OrderObserver) : void
+  + removeObserver(o : OrderObserver) : void
+  + notifyObservers() : void
+}
+
+class "Order\n<<ConcreteSubject>>" as ORD {
+  - id : Long
+  - status : OrderStatus
+  - table : RestaurantTable
+  # observers : List<OrderObserver>  {transient}
+  + updateStatus(status : OrderStatus) : void
+  + addObserver(o : OrderObserver) : void
+  + removeObserver(o : OrderObserver) : void
+  + notifyObservers() : void
+  + getStatus() : OrderStatus
+}
+
+interface "OrderObserver\n<<Observer>>" as OBS {
+  + onOrderStatusChanged(order : Order, newStatus : OrderStatus) : void
+}
+
+class "WaiterNotifier\n<<ConcreteObserver>>" as WN {
+  - redisPublisher : RedisPublisher
+  + onOrderStatusChanged(order : Order, newStatus : OrderStatus) : void
+}
+
+class "ManagerDashboard\n<<ConcreteObserver>>" as MD {
+  - redisPublisher : RedisPublisher
+  + onOrderStatusChanged(order : Order, newStatus : OrderStatus) : void
+}
+
+class "KitchenDisplayObserver\n<<ConcreteObserver>>" as KDO {
+  - redisPublisher : RedisPublisher
+  + onOrderStatusChanged(order : Order, newStatus : OrderStatus) : void
+}
+
+SUBJ <|.. ORD
+OBS <|.. WN
+OBS <|.. MD
+OBS <|.. KDO
+
+ORD o-- OBS : observers\n    0..*
+
+note right of ORD
+  observers is @Transient — not persisted by JPA.
+  OrderService re-registers all three observers
+  after every findById() call to avoid silent
+  notification failures on reload.
+end note
+
+note bottom of WN
+  Publishes to Redis channel
+  "notifications:waiter"
+end note
+
+note bottom of MD
+  Publishes to Redis channel
+  "notifications:manager"
+end note
+
+note bottom of KDO
+  Publishes to Redis channel
+  "notifications:kitchen"
+end note
+
+note top of SUBJ
+  ConcreteSubject (Order) fires notifyObservers()
+  on every updateStatus() call.
+  Adding a new observer (e.g. SMSNotifier) requires
+  only implementing OrderObserver — Order never changes.
+end note
+
+@enduml

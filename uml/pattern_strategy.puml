@@ -1,0 +1,87 @@
+@startuml BitePlate_Pattern_Strategy
+title BitePlate — Strategy Pattern Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam classFontSize 13
+skinparam defaultFontName Arial
+skinparam backgroundColor #FFFFFF
+skinparam classBorderColor #444444
+skinparam classBackgroundColor #FFFFFF
+skinparam arrowColor #444444
+skinparam arrowThickness 1.5
+skinparam padding 6
+
+left to right direction
+
+interface "PricingStrategy\n<<Strategy>>" as PS {
+  + calculateTotal(order : Order) : BigDecimal
+  + getStrategyName() : String
+}
+
+class "StandardPricingStrategy\n<<ConcreteStrategy>>" as SPS {
+  + calculateTotal(order : Order) : BigDecimal
+  + getStrategyName() : String
+}
+
+class "HappyHourPricingStrategy\n<<ConcreteStrategy>>" as HPS {
+  - {static} DISCOUNT : BigDecimal = 0.80
+  + calculateTotal(order : Order) : BigDecimal
+  + getStrategyName() : String
+}
+
+class "LoyaltyCardPricingStrategy\n<<ConcreteStrategy>>" as LPS {
+  - {static} DISCOUNT : BigDecimal = 0.90
+  - {static} CREDIT_POINTS : int = 3
+  + calculateTotal(order : Order) : BigDecimal
+  + getStrategyName() : String
+}
+
+class "BillingService\n<<Context>>" as BS {
+  - standardPricing : PricingStrategy
+  - happyHourPricing : PricingStrategy
+  - loyaltyCardPricing : PricingStrategy
+  + generateBill(orderId : Long, strategyName : String) : Bill
+  - selectStrategy(name : String) : PricingStrategy
+}
+
+class "BillingFacade\n<<Facade>>" as BF {
+  - taxCalculator : TaxCalculator
+  - billRepository : BillRepository
+  + generateBill(order : Order, strategy : PricingStrategy) : Bill
+}
+
+PS <|.. SPS
+PS <|.. HPS
+PS <|.. LPS
+
+BS --> PS : selects at runtime
+BS ..> BF : delegates to
+BF ..> PS : calls calculateTotal()
+
+note right of BS
+  selectStrategy() uses a switch expression
+  on the String parameter.
+  Adding a new strategy requires:
+    1. new class implementing PricingStrategy
+    2. one new case in selectStrategy()
+  BillingFacade requires zero changes.
+end note
+
+note bottom of HPS
+  subtotal = order.calculateSubtotal()
+  total    = subtotal × 0.80
+  (20% Happy Hour discount)
+end note
+
+note bottom of LPS
+  total    = subtotal × 0.90
+  credits += 3 per transaction
+  (10% Loyalty Card discount)
+end note
+
+note bottom of SPS
+  total = order.calculateSubtotal()
+  No discount applied.
+end note
+
+@enduml

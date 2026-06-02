@@ -1,0 +1,116 @@
+@startuml BitePlate_ActivityDiagram_HistoryQuery
+title BitePlate SRMS — Order History Recording & Query Activity Diagram
+
+!pragma useVerticalIf on
+
+scale 2800 width
+
+<style>
+activityDiagram {
+  FontSize 18
+  FontName Arial
+  BackgroundColor #FFFFFF
+  BorderColor #444444
+  BorderThickness 2
+  ArrowThickness 2
+  Padding 16
+}
+diamond {
+  FontSize 16
+  BackgroundColor #FFFFFF
+  BorderColor #444444
+}
+note {
+  FontSize 14
+  BackgroundColor #FFFBE6
+  BorderColor #888888
+}
+</style>
+
+skinparam swimlaneBorderThickness 2
+skinparam swimlaneBorderColor #888888
+skinparam swimlaneFontSize 22
+skinparam swimlaneFontStyle bold
+skinparam swimlaneBackgroundColor #FFFFFF
+skinparam conditionStyle diamond
+
+|Cashier|
+|System|
+|Manager|
+
+|Cashier|
+start
+
+:Generate bill;
+note right: POST /api/billing/generate/{orderId}?strategy=...
+
+|System|
+:BillingService.generateBill(orderId, strategyName);
+
+:KitchenQueue.execute(ServeOrderCommand);
+note right: COMMAND: order.updateStatus(SERVED)\n+ notifyObservers()
+
+:selectStrategy(strategyName);
+note right: STRATEGY: algorithm chosen at runtime
+
+:BillingFacade.generateBill(order, strategy);
+
+:strategy.calculateTotal(order);
+note right: concrete strategy applies discount
+
+:TaxCalculator.calculateTax(subtotal);
+
+:Build Bill + BillLineItems\nbillRepository.save(bill);
+
+:OrderHistoryLog.getInstance();
+note right: SINGLETON\nif (instance == null) {\n  synchronized (OrderHistoryLog.class) {\n    if (instance == null)\n      instance = new OrderHistoryLog()\n  }\n}
+
+:getInstance().append(\n  new OrderRecord(orderId, tableId,\n  staffId, strategy, total, timestamp));
+note right: records.add(record)  ← CopyOnWriteArrayList\nhistoryRepository.save(record)  ← PostgreSQL
+
+|Cashier|
+:Receive 201 Created { bill };
+
+:Process payment;
+
+|Manager|
+:Request order history;
+note right: GET /api/history?from=...&to=...
+
+|System|
+:OrderHistoryLog.getInstance();
+note right: SINGLETON: same instance returned
+
+:iterator = getInstance().iterator();
+note right: ITERATOR: new OrderHistoryIterator(\n  new ArrayList<>(records))\nreturns snapshot — prevents ConcurrentModificationException
+
+repeat
+  :record = iterator.next();
+  :Accumulate into\nrevenueByCategory, countByItem, countByHour;
+repeat while (iterator.hasNext()?) is (yes) not (no)
+
+:Sort countByItem descending;
+:Build HistoryReport { records, analytics };
+
+|Manager|
+if (Date filter?) then (yes)
+  :Filter records by date range;
+else (no)
+endif
+
+if (Table filter?) then (yes)
+  :Filter records by table;
+else (no)
+endif
+
+if (Most ordered item?) then (yes)
+  :getMostFrequentlyOrderedItem();
+  note right: ITERATOR: second traversal\nreturns max-count entry
+else (no)
+endif
+
+:View analytics dashboard;
+
+stop
+
+@enduml

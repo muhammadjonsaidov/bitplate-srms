@@ -1,0 +1,66 @@
+@startuml BitePlate_DerivedFromSnippet
+title Code-to-Diagram Derivation — Reverse-Engineered UML Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam classFontSize 13
+skinparam defaultFontName Arial
+skinparam backgroundColor #FFFFFF
+skinparam classBorderColor #444444
+skinparam classBackgroundColor #FFFFFF
+skinparam arrowColor #444444
+skinparam arrowThickness 1.5
+skinparam padding 6
+
+abstract class "AbstractSubject\n<<Subject>>" as AS {
+  # listeners : List<Listener>
+  + add(l : Listener) : void
+  + notifyAll(event : Object) : void
+}
+
+class "ConcreteSubject\n<<ConcreteSubject>>" as CS {
+  - state : String
+  + ConcreteSubject()
+  + setState(s : String) : void
+}
+
+interface "Listener\n<<Observer>>" as L {
+  + onEvent(event : Object) : void
+}
+
+class "ConcreteListenerA\n<<ConcreteObserver>>" as CLA {
+  + onEvent(event : Object) : void
+}
+
+class "ConcreteListenerB\n<<ConcreteObserver>>" as CLB {
+  + onEvent(event : Object) : void
+}
+
+AS <|-- CS
+L <|.. CLA
+L <|.. CLB
+
+AS o-- L : listeners\n0..*
+
+note top of AS
+  Abstract base class identified from 'abstract' keyword (snippet line 1).
+  Protected collection modelled as aggregation:
+  listeners exist independently of the subject.
+end note
+
+note right of CS
+  Calls super() in constructor (snippet line 8).
+  setState() calls notifyAll() internally —
+  inferred from the loop in notifyAll() firing after
+  each state mutation in the snippet.
+end note
+
+note bottom of CLA
+  Registers via subject.add(this) (snippet line 22).
+  Loop in notifyAll() fires onEvent() on each element.
+  Pattern identified: Observer (Gamma et al., 1994).
+  Assumption: protected field intended for subclass extension —
+  had it been private with a getter, relationship
+  would be modelled as composition instead.
+end note
+
+@enduml
